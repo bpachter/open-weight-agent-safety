@@ -1663,14 +1663,53 @@ level [CITE: system-level mitigations, sandboxing, capability restriction].
 We test only prompt-level defenses, because prompt-level defenses are what a
 local deployment can actually apply to a fixed open-weight checkpoint.
 
-Existing benchmarks for indirect injection [CITE: injection benchmarks, e.g.
-agent-focused suites] largely target hosted frontier models and, to our
-knowledge, report attack success over attempted rather than delivered attacks.
-Confirming or refuting that characterisation of prior work is a required
-literature-search task before submission; if any prior benchmark does condition
-on delivery, this paper must cite it and narrow its methodological claim
-accordingly. **[TODO: verify this claim before submission — it is a claim about
-the literature, and the paper's methodological contribution depends on it.]**
+Existing benchmarks for indirect injection largely target hosted or frontier
+models, and several observe in passing that a low-competence model can look
+artificially safe without measuring or correcting for why. AgentDojo notes
+that "models with low utility often fail at correctly executing the
+attacker's goal" [CITE: AgentDojo, Debenedetti et al., arXiv:2406.13352].
+InjecAgent's `ASR-valid` metric is motivated by the same concern but sidesteps
+it rather than measuring it: the harness teacher-forces the tool call, which
+makes non-delivery structurally impossible instead of quantifying it [CITE:
+InjecAgent, Zhan et al., arXiv:2403.02691]. Neither reports a decomposition, a
+ranking reversal, or an identification strategy for the effect — that is the
+gap this paper fills.
+
+Two more recent benchmarks name a closely related phenomenon and warrant
+explicit differentiation, since a reader could otherwise mistake either for
+the same claim. WASP evaluates web agents hijacked mid-task and reports that
+"even state-of-the-art agents often struggle to fully complete the attacker
+goals," terming this "security by incompetence" [CITE: WASP, Evtimov,
+Zharmagambetov, Grattafiori, Guo & Chaudhuri, arXiv:2504.18575, NeurIPS 2025
+D&B]. That is the *third* term of our decomposition, $P(\text{executes} \mid
+\text{obeys})$: WASP's tasks guarantee the payload reaches the agent by
+construction — the agent must visit the attacker-controlled page to complete
+its own assigned task — and its panel is frontier commercial models (GPT-4o,
+o1, Claude 3.5/3.7) that already navigate reliably. Our `deepseek-r1:14b`
+result, delivered 0/258 attack trials because the model never invoked the
+carrier tool at all (§7.1), sits entirely upstream of WASP's regime and is
+invisible to it: WASP has no model incapable of taking the first step, so it
+never encounters the term we isolate.
+
+Leong's concurrent stateful-agent study reports a similarly-framed
+dissociation — memory-write rates above 97.5% against downstream execution as
+low as 0% — but on inspection this is storage-vs-execution, not
+delivery-vs-obedience [CITE: Leong, "Injection-Execution Dissociation",
+arXiv:2605.08442]. A run there counts as injected once a save-to-memory call
+fires, in a scenario that instructs the agent to retrieve and save the
+relevant content as its actual assigned task; injection succeeds in 100% of
+the reported attack runs. Delivery is therefore guaranteed by task
+construction in Leong's design exactly as in WASP's, and both papers study
+what happens *after* the payload is already in context. Ours is the only
+design in which the model's own choice not to call a tool — driven by
+competence, not by resistance — is itself the measured event, and in which
+that choice reverses a naive safety ranking.
+
+<!-- Bibliographic details above (WASP, Leong, AgentDojo, InjecAgent) were
+     confirmed by direct fetch of the arXiv abstract pages and, for WASP and
+     Leong, a full-text read, not reconstructed from memory. This note is a
+     verification trail, not a substitute for the human confirmation the
+     citation policy above requires before submission. -->
 
 ### 5.2 Agentic benchmarks and tool use
 
