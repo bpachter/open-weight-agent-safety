@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+title: "Open-Weight Agent Safety: measurement infrastructure for indirect prompt injection on locally-hosted models"
+message: "If you use this software or data, please cite the paper below."
+type: software
+authors:
+  - family-names: Pachter
+    given-names: Ben
+repository-code: "https://github.com/bpachter/open-weight-agent-safety"
+license: MIT
+license-url: "https://github.com/bpachter/open-weight-agent-safety/blob/main/LICENSE"
+keywords:
+  - prompt injection
+  - indirect prompt injection
+  - LLM agents
+  - AI safety
+  - open-weight models
+  - quantization
+  - evaluation methodology
+  - agent security
+abstract: >-
+  A factorial measurement harness and trial-level dataset for indirect
+  prompt-injection attacks against quantized open-weight language models
+  running on a single consumer GPU. Attack success is decomposed into
+  delivery, obedience and execution stages rather than reported as a single
+  rate, on the grounds that a model too weak to call tools scores near zero
+  on the product while having no injection resistance at all. Includes
+  negative and active control arms, so measured effects are attributable to
+  the injected payload rather than to baseline behaviour.
+
+preferred-citation:
+  type: article
+  title: "Unattacked, Not Unbreakable: Decomposing Prompt-Injection Success in Quantized Open-Weight Agents"
+  authors:
+    - family-names: Pachter
+      given-names: Ben
+  year: 2026
+  # TODO: fill in venue/DOI/arXiv ID on submission.

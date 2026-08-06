@@ -1,0 +1,32 @@
+# Secrets — never commit. The study needs no API keys; if one appears here,
+# something has been copied in from a private repo by mistake.
+.env
+.env.*
+*.key
+*.pem
+credentials*
+secrets*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# SQLite sidecars — the committed .db is the artifact; these are transient and
+# will conflict on every pull.
+*.db-wal
+*.db-shm
+*.db-journal
+*.db.bak
+trials_spill.jsonl
+
+# Local scratch
+scratch/
+tmp/
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,7 @@
+# Pinned to lower bounds actually exercised. The harness itself needs only the
+# standard library plus a running Ollama; everything below is for analysis.
+numpy>=1.26.4
+scipy>=1.15.3
+pandas>=2.2.3
+statsmodels>=0.14.5
+matplotlib>=3.10.3
