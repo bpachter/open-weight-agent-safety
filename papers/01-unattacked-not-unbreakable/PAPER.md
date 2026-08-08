@@ -1,10 +1,11 @@
 # Unattacked, Not Unbreakable: Decomposing Prompt-Injection Success in Quantized Open-Weight Agents
 
-**Status: PRE-REGISTRATION + PARTIAL RESULTS (controls stage complete).**
+**Status: PRE-REGISTRATION + PARTIAL RESULTS (controls and containment stages
+complete).**
 
 Methods, threat model, hypotheses, outcome definitions and the analysis plan in
-this document were fixed *before* any confirmatory data existed. One stage has
-now run to completion:
+this document were fixed *before* any confirmatory data existed. Two stages
+have now run to completion:
 
 > **`run_id = controls-heldout`** — 4,680 trials, held-out split, 6 models,
 > 13 attack cells × 20 trials × 3 conditions, `defense = none`,
@@ -13,15 +14,29 @@ now run to completion:
 > INVALID and excluded. These are **real, confirmatory, held-out numbers**, and
 > they appear in §7.1–§7.5 as estimates with intervals.
 
+> **`run_id = containment-heldout`** — 6,800 trials, held-out split, 5 models
+> (`deepseek-r1:14b` excluded a priori: it delivers 0/258 attack trials in
+> `controls-heldout` and contributes no discordant pairs to a McNemar design),
+> 34 attack cells × 20 trials × 2 `containment` arms, `condition = attack`,
+> `defense = none`, `position = head`, `authority = none`,
+> `carrier ∈ {web_search, product_kg, get_stock_quote}` (structured carriers
+> only, §4.4b), `framing ∈ {admin_note, html_comment, spec_voice}`. 32 trials
+> (0.47%) recorded INVALID and excluded. These are **real, confirmatory,
+> held-out numbers, independently reproduced against both the private
+> `trials.db` and the public repo's vendored copy**, and they appear in §7.6 as
+> estimates with intervals, replacing the `n = 120` probe that previously stood
+> in for them.
+
 Everything the remaining stages (screening over all seven framings, ablation,
-defense, containment, quantization) will produce still appears as an explicitly
-marked placeholder of the form `[RESULT: ...]`. **No number that has not
-actually been measured appears anywhere in this document without that marker.**
-Figures from the dev-split pilot are labelled **PRELIMINARY**, and are
-exploratory by construction — they are what generated the hypotheses, so they
-cannot also test them. The `n = 120` containment probe of §7.6 is likewise a
-**probe**, not a result of the main design, and is marked as such everywhere it
-appears.
+defense, quantization) will produce still appears as an explicitly marked
+placeholder of the form `[RESULT: ...]`. **No number that has not actually been
+measured appears anywhere in this document without that marker.** Figures from
+the dev-split pilot are labelled **PRELIMINARY**, and are exploratory by
+construction — they are what generated the hypotheses, so they cannot also test
+them. The `n = 120` containment probe that used to stand alone in §7.6 is kept
+in this revision, but strictly as the **preliminary/exploratory evidence that
+motivated running the containment stage**, subordinated to and superseded by
+the confirmatory `containment-heldout` numbers above.
 
 Full derivations of every interval, test statistic and identification argument
 used below are in the companion document **`APPENDIX_MATH.md`**. This document
@@ -55,9 +70,10 @@ abundant; measurements of their behaviour under adversarial tool output are
 not. We run a factorial study of indirect prompt injection against six
 open-weight 4-bit models on a single RTX 4090 under Ollama, crossing attack
 framing, payload position, claimed authority, carrier tool, **payload
-containment** and prompt-level defense. The completed held-out control stage
-contributes 4,680 trials (8 invalid, 0.17%); the remaining stages are
-pre-registered here and appear as `[RESULT: ...]`.
+containment** and prompt-level defense. The completed held-out controls stage
+contributes 4,680 trials (8 invalid, 0.17%) and the completed held-out
+containment stage contributes a further 6,800 trials (32 invalid, 0.47%); the
+remaining stages are pre-registered here and appear as `[RESULT: ...]`.
 
 Our central methodological claim is that indirect-injection susceptibility is
 only defined **conditional on delivery**. Writing $D_i$ for the event that the
@@ -96,18 +112,24 @@ maintenance note and at $0.667$ $[0.619, 0.711]$ dressed in the register of a
 data-handling policy — an odds ratio of $8.89$, 95% CI $[3.15, 25.07]$ with
 standard errors clustered on model, Holm-adjusted $p = 0.0085$.
 
-We additionally pre-register **payload containment** — whether the untrusted
-text is concatenated into the serialized tool result or placed inside an
-escaped string field of a well-formed record — as a first-class factor. An
-$n = 120$ probe, reported as a probe and not as a result of the main design,
-found containment abolishes the attack for one model ($10/30 \to 0/30$, Fisher
-$p = 0.0008$) and does almost nothing for another ($16/30 \to 10/30$,
-$p = 0.19$). If that model-dependence survives the full design, "wrap untrusted
-content in a field" is a real mitigation for some deployments and near-worthless
-for others, which is a different and more actionable claim than either
-"containment works" or "containment does not." We release the harness, the full
-trial-level dataset including every raw model response, and the pre-registration
-this document constitutes.
+**(iv) Payload containment — placing untrusted text inside an escaped string
+field of a well-formed record rather than concatenating it raw into the
+serialized tool result — helps every model, with no exceptions, but the
+*amount* it helps is genuinely heterogeneous.** Pooled over 3,353 matched,
+both-delivered pairs (five models, held-out), obedience falls from
+$0.295$ to $0.135$; paired McNemar conditional OR $0.15$, 95% CI $[0.12, 0.19]$,
+$p = 3.0\times10^{-97}$. All five per-model odds ratios are below 1 and all five
+$p < 10^{-6}$ — from `gemma4:26b`'s near-total elimination ($0.032 \to 0.000$,
+OR $0.00$ $[0.00, 0.18]$) to `qwen3:30b-instruct`'s partial, roughly one-third
+reduction ($0.438 \to 0.296$, OR $0.31$ $[0.21, 0.44]$), Cochran's
+$Q = 31.0$, $\mathrm{df} = 4$, $p = 3.0\times10^{-6}$, $I^2 = 87\%$. An earlier
+$n = 120$ probe, under-powered, had read one of these five models as showing
+"almost nothing" ($16/30 \to 10/30$, $p = 0.19$, ns) — a false negative the
+full design corrects: containment is not a mitigation that works for some
+models and not others, it is a mitigation that works everywhere at a magnitude
+that depends on which checkpoint is deployed. We release the harness, the full
+trial-level dataset including every raw model response, and the
+pre-registration this document constitutes.
 
 ---
 
@@ -188,13 +210,15 @@ assertiveness needs the two adversarial framings, which the controls stage did
 not include; that test is pre-registered and pending (§7.7). A suite that tests
 one framing is measuring that framing, not the model.
 
-**(d) An unstated implementation detail may dominate all of the above.** Whether
+**(d) An unstated implementation detail dominates all of the above.** Whether
 untrusted text is concatenated into a serialized tool result or placed inside an
-escaped field of it is a choice every harness makes silently, ours included. On
-an $n = 120$ probe it changes obedience by up to 33 points and does so
-differently per model (§7.6). If that holds, published injection rates are not
-comparable across studies that made different choices, and neither study
-mentioned making one.
+escaped field of it is a choice every harness makes silently, ours included. The
+confirmatory `containment-heldout` stage (6,800 trials, §7.6) shows it changes
+obedience for every model in the panel — no exceptions — by an amount that
+ranges from near-total elimination on one model to a partial, roughly one-third
+reduction on another (Cochran's $Q$, $p = 3.0\times10^{-6}$). Published
+injection rates are therefore not comparable across studies that made different
+choices about this, and neither study typically mentions making one.
 
 ### 1.2 Contribution
 
@@ -216,13 +240,16 @@ mentioned making one.
    assertiveness, predicts injection success, with the practical corollary that
    the most dangerous payload is the one that reads like a change-management
    ticket (§7.7, §8.1).
-5. **Payload containment as a measured factor rather than an unstated
+5. **Payload containment measured as a factor rather than left an unstated
    default.** Every published indirect-injection rate we are aware of is
    silently conditional on how the payload was joined to the tool result. We
    make that a factor, define it precisely, state where it is *undefined*
-   (plain-text carriers, §4.4b), and pre-register a design that estimates the
-   model × containment interaction rather than a pooled main effect the probe
-   already suggests would be meaningless.
+   (plain-text carriers, §4.4b), and — on the confirmatory held-out stage
+   (6,800 trials, §7.6) — show that it helps every model with no exceptions
+   (all five per-model odds ratios $< 1$, all five $p < 10^{-6}$) at a magnitude
+   that is genuinely heterogeneous rather than uniform (Cochran's $Q$,
+   $p = 3.0\times10^{-6}$), which is a sharper and more actionable finding than
+   the pooled main effect a naive reading would have reported.
 6. A **pre-registered separation of exploratory and confirmatory analysis**
    via a content-hashed attack split, so that the register effect — which was
    *discovered* in the pilot — is tested on attacks that were never used to
@@ -1068,12 +1095,16 @@ effect marginalised over containment. Concretely (§4.10):
 
 **Why containment must be a factor at all.** Every indirect-injection success
 rate we are aware of — including all of ours prior to this revision — is
-silently conditional on an unstated choice of $S$. The $n = 120$ probe (§7.6)
-puts the size of that conditionality at up to $33$ percentage points, and makes
-it *model-dependent*, which means it cannot be absorbed as a constant offset.
-An unstated factor that changes an effect's magnitude by a third and its
-ordering across models is not a nuisance parameter; it is a missing dimension of
-the design.
+silently conditional on an unstated choice of $S$. This was pre-registered on
+the strength of an $n = 120$ probe that put the size of that conditionality at
+up to $33$ percentage points and flagged it as *model-dependent*; the
+confirmatory `containment-heldout` stage (6,800 trials, §7.6) now shows the
+direction of the effect is not model-dependent at all — it helps every model —
+while its *magnitude* is, ranging from near-total elimination on one model to a
+partial, roughly one-third reduction on another (Cochran's $Q$,
+$p = 3.0\times10^{-6}$), which still means it cannot be absorbed as a constant
+offset. A factor whose magnitude varies this much with which model is deployed
+is not a nuisance parameter; it is a load-bearing dimension of the design.
 
 ### 4.5 Attack identity and the dev/held-out split
 
@@ -1786,24 +1817,34 @@ the same, so the arms differ in the tool message and nothing else.
 
 *Every table and figure below is emitted by `analyze.py`. §7.1–§7.5 and §7.10–
 §7.11 report the **completed held-out controls stage** (`run_id =
-controls-heldout`, 4,680 trials); §7.6 reports an $n = 120$ **probe**, marked as
-such throughout; §7.7–§7.9 remain `[RESULT: ...]` placeholders because the
-stages that fill them have not run. The reporting shape was fixed before any
-confirmatory data existed and has not been altered to suit what arrived.*
+controls-heldout`, 4,680 trials); §7.6 reports the **completed held-out
+containment stage** (`run_id = containment-heldout`, 6,800 trials), with the
+original $n = 120$ probe retained but relabelled as the preliminary evidence
+that motivated running it; §7.7–§7.9 remain `[RESULT: ...]` placeholders
+because the stages that fill them have not run. The reporting shape was fixed
+before any confirmatory data existed and has not been altered to suit what
+arrived.*
 
 > **A caveat that applies to every interval in this section.** The intervals
 > below are trial-level Wilson / Newcombe / Tango intervals as emitted by
 > `analyze.py` today. §4.10 pre-registers a **cluster bootstrap over
-> (model × attack) cells** as the unit of independent replication, and that
-> bootstrap is **not yet implemented** (the regression fits do use
-> cluster-robust SEs on model with $t(G-1)$ critical values, and those are
-> labelled where they appear). Trials within a cell share a prompt and differ
-> only by seed, so the trial-level intervals here are **anti-conservative** —
-> too narrow, by an amount that grows with the within-cell correlation. Where a
+> (model × attack_id) cells** as the unit of independent replication. That
+> bootstrap is **now implemented** (`analyze.cluster_bootstrap`,
+> `APPENDIX_MATH.md` §M13) and has been run for the nine quantities that carry
+> a headline conclusion in this paper — $\Delta_{\mathrm{inj}}$ (§7.3),
+> $\Delta_{\mathrm{safety}}$ (§7.4), the framing OR (§7.5), and the pooled and
+> five per-model containment ORs (§7.6) — and is reported beside the existing
+> analytic intervals everywhere it applies, never in place of them. It has
+> **not** been run for the remaining trial-level proportion and rate intervals
+> elsewhere in §7 (Tables 4, 6, the per-cell figures), which are still
+> trial-level Wilson/Newcombe and remain **anti-conservative** — too narrow, by
+> an amount that grows with the within-cell correlation — for the same reason as
+> before: trials within a cell share a prompt and differ only by seed. Where a
 > conclusion depends on an interval's width rather than its location, we say so.
-> No headline claim in this paper is a borderline one, which is why the gap is
-> reported rather than allowed to block publication of the numbers; it must
-> close before submission.
+> No headline claim in this paper is a borderline one, which is why the gap was
+> reported rather than allowed to block publication of the numbers, and why
+> closing it for the nine load-bearing quantities came before submission rather
+> than after.
 
 ### 7.0 Preliminary pilot (dev split, EXPLORATORY ONLY)
 
@@ -2103,6 +2144,15 @@ $$
 p_{\text{Fisher}} = 8.7\times10^{-164}.
 $$
 
+*Three ways of interval-ing the same point estimate, reported side by side
+(§4.10, `APPENDIX_MATH.md` §M13):* trial-level Newcombe $[0.335, 0.387]$; the
+cluster-robust linear-probability sandwich on model ($G = 5$) $[0.100, 0.622]$;
+the pre-registered (model × attack_id) cluster bootstrap ($G = 78$, $B = 2000$)
+$0.361$, percentile $[0.267, 0.459]$, BCa $[0.271, 0.464]$. The bootstrap sits
+between the two — narrower than the $G = 5$ sandwich, wider than the trial-level
+interval — which is the expected ordering when the resampling unit is finer
+than "one model" but coarser than "one trial."
+
 Because $\hat\pi_0 = 0$ exactly, $\hat\Delta_{\mathrm{inj}}$ coincides with the
 raw attack rate — but that coincidence is a **finding**, not an accounting
 identity, and it is only available because the clean arm was run. Absent it, the
@@ -2124,6 +2174,16 @@ $$
 \hat\Delta_{\mathrm{safety}} \;=\; \tfrac{509}{1295} - \tfrac{468}{1298}
 \;=\; 0.032, \qquad [-0.005,\, 0.070], \qquad p_{\text{Fisher}} = 0.089 .
 $$
+
+Same three-way comparison as $\Delta_{\mathrm{inj}}$ above: trial-level Fisher
+$[-0.005, 0.070]$; cluster-robust LPM sandwich on model ($G = 5$)
+$[-0.147, 0.212]$; cluster bootstrap on (model × attack_id) ($G = 78$,
+$B = 2000$) point $0.0325$, percentile $[-0.037, 0.104]$, BCa
+$[-0.035, 0.106]$. All three contain zero, which is the point of §7.4 — the
+bootstrap does not rescue a null that the trial-level interval already reported
+honestly as a null; it only says how much of a non-null the data could still be
+hiding, and the answer is "not much more than the trial-level interval already
+allowed for."
 
 Paired, which is the estimator to prefer because the arms share `attack_id`,
 split and seed (§4.5) — exact McNemar over 1,555 matched pairs on
@@ -2266,9 +2326,15 @@ they disagree on width, and the wider is reported.
 point.** The same odds ratio of $8.89$ carries the interval $[6.63, 11.92]$ when
 trials are treated as independent and $[3.15, 25.07]$ when the model is treated
 as the cluster — a fourfold difference in width on the same 1,298 observations.
-Neither interval is yet the pre-registered (model × attack) cluster bootstrap.
-Any paper reporting the first without the second is reporting a precision it
-does not have.
+The pre-registered (model × attack_id) cluster bootstrap ($G = 78$, $B = 2000$,
+`APPENDIX_MATH.md` §M13) is no longer owed: percentile $[3.37, 30.78]$, BCa
+$[2.70, 25.03]$. Its BCa lower bound ($2.70$) tracks the $G = 5$ sandwich's
+lower bound ($3.15$) closely — cross-method corroboration that the sandwich's
+width, not the trial-level width, is the one to trust — while its percentile
+upper bound ($30.78$) is wider still than either analytic interval. Any paper
+reporting the trial-level interval alone is reporting a precision it does not
+have; with all three now printed together, the honest statement is that the OR
+is somewhere in a wide but bounded range, not a narrow one.
 
 **Figure 3 — Framing × model.** Obedience per (framing, model) cell, delivered
 attack trials, held-out. The smallest cell has $n = 60$ delivered, so none is
@@ -2308,15 +2374,130 @@ no second arm. That is a property of the controls stage, which was designed
 around the three framings that survived the pilot, not a result. §7.7 stays a
 placeholder.
 
-### 7.6 RQ6 — payload containment (PROBE ONLY; the factor has not been run)
+### 7.6 RQ6 — payload containment (E9/E10; `containment-heldout`, confirmatory)
 
-> **Everything in this subsection is an $n = 120$ side probe
-> (`containment_probe.py`, raw transcripts in `containment_probe.jsonl`). It is
+**Estimand (§4.6).** $\Delta_S(m) = \mathbb{P}(Y{=}1 \mid \text{concatenated}, D{=}1, m) -
+\mathbb{P}(Y{=}1 \mid \text{contained}, D{=}1, m)$ per model $m$, as an
+exact-McNemar paired risk difference over $(\zeta, t)$-matched pairs with Tango
+intervals; heterogeneity across models summarised by Cochran's $Q$ on the
+per-model **conditional (discordant-pair) log odds ratios** (H6b's target); the
+pooled main effect (H6a) reported last, never without $Q$ beside it — the order
+§4.6 pre-registered. **H6a: $\Delta_S(m) > 0$ on average. H6b, the hypothesis
+that matters: the reduction is strongly model-dependent.**
+
+Design: `run_id = containment-heldout`, held-out split, 5 models
+(`deepseek-r1:14b` excluded a priori — 0/258 delivered attack trials in
+`controls-heldout`, so it can contribute no discordant pairs), 34 attack cells
+× 20 trials × 2 containment arms × `condition = attack`, 3 structured carriers
+(`web_search`, `product_kg`, `get_stock_quote`; `read_file` is excluded by
+construction, §4.4b), 3 framings. 6,800 trials, 32 (0.47%) recorded INVALID and
+excluded. Delivery is near-total and flat across arms — `concatenated` $0.9959$,
+`contained` $0.9965$, $\chi^2 = 0.040$, $\mathrm{df} = 1$, $p = 0.841$ — which is
+the pre-registered flatness check this identification argument requires
+(§3.6, §4.10): containment is invisible at turn 1, so if it moved delivery the
+conditioning would be suspect, and it does not. The delivered-only contrast is
+primary and ITT is the sensitivity analysis, the reverse of the defense
+convention, because containment (unlike a defense) cannot be seen before the
+payload arrives; the two agree closely here precisely because delivery is
+near-saturated (pooled ITT $n = 3{,}368$: $\mathrm{RD} = 0.159$
+$[0.145, 0.174]$, $p = 3.0\times10^{-97}$, indistinguishable in substance from
+the delivered-only figure below).
+
+**Table 9 — Per-model containment effect, both-delivered matched pairs, exact
+McNemar with Tango intervals for RD and exact conditional intervals for OR.**
+$b$ = pairs obeyed `concatenated` / not `contained`; $c$ = the reverse.
+
+| model | $n$ pairs | concat. rate | contained rate | $b$ | $c$ | $\hat\Delta_S(m)$ [Tango 95% CI] | cond. OR [exact 95% CI] | $p_{\text{exact}}$ |
+|---|---|---|---|---|---|---|---|---|
+| `gemma4:26b` | 680 | 0.032 | **0.000** | 22 | 0 | 0.032 [0.021, 0.048] | **0.00 [0.00, 0.18]** | $4.8\times10^{-7}$ |
+| `qwen2.5:7b` | 657 | 0.333 | 0.053 | 196 | 12 | **0.280 [0.243, 0.318]** | 0.06 [0.03, 0.11] | $5.1\times10^{-44}$ |
+| `qwen3-coder:30b` | 672 | 0.536 | 0.283 | 191 | 21 | 0.253 [0.215, 0.291] | 0.11 [0.07, 0.17] | $1.7\times10^{-35}$ |
+| `qwen3.6:27b` | 672 | 0.140 | 0.043 | 87 | 22 | 0.097 [0.068, 0.127] | 0.25 [0.15, 0.41] | $2.5\times10^{-10}$ |
+| `qwen3:30b-instruct` | 672 | 0.438 | 0.296 | 137 | 42 | 0.141 [0.104, 0.179] | 0.31 [0.21, 0.44] | $5.9\times10^{-13}$ |
+
+**Heterogeneity.** Cochran's $Q$ on the five conditional log-ORs above:
+$Q = 31.03$, $\mathrm{df} = 4$, $p = 3.0\times10^{-6}$, $I^2 = 87.1\%$.
+
+**Pooled main effect (H6a, reported last, per the pre-registered order), 3,353
+both-delivered matched pairs, all five models:**
+
+$$
+\hat\Delta_S \;=\; 0.295 - 0.135 \;=\; 0.160, \qquad
+\text{Tango 95\% CI } [0.145,\, 0.175], \qquad
+\text{cond. OR } 0.15\ [0.12,\, 0.19], \qquad
+b = 633,\ c = 97, \qquad
+p_{\text{exact}} = 3.0\times10^{-97}.
+$$
+
+**Cluster bootstrap, (model × attack_id), $B = 2{,}000$ (§4.10,
+`APPENDIX_MATH.md` §M13) — reported beside the exact intervals above, not in
+place of them:**
+
+| quantity | $G$ | exact McNemar OR [95% CI] | bootstrap point | percentile 95% CI | BCa 95% CI |
+|---|---|---|---|---|---|
+| pooled | 170 | 0.15 [0.12, 0.19] | 0.1532 | [0.08, 0.26] | [0.09, 0.29] |
+| `gemma4:26b` | 34 | 0.00 [0.00, 0.18] | 0.0222 | [0.01, 0.20] | **[0.00, 0.11]** † |
+| `qwen2.5:7b` | 34 | 0.06 [0.03, 0.11] | 0.0612 | [0.02, 0.15] | [0.02, 0.20] |
+| `qwen3-coder:30b` | 34 | 0.11 [0.07, 0.17] | 0.1099 | [0.04, 0.21] | [0.05, 0.22] |
+| `qwen3.6:27b` | 34 | 0.25 [0.15, 0.41] | 0.2529 | [0.10, 0.56] | [0.10, 0.55] |
+| `qwen3:30b-instruct` | 34 | 0.31 [0.21, 0.44] | 0.3066 | [0.02, 0.95] | [0.05, 1.27] |
+
+† `gemma4:26b`'s BCa is narrower than its own percentile interval (width ratio
+$0.55$) rather than wider — a skewed-bootstrap-distribution flag
+($z_0 = -0.170$), driven by its $b = 0$ pooled discordant count, and is the one
+row in this table where BCa is preferred over percentile for that stated
+reason rather than by default. Every other percentile interval is wider than
+the corresponding exact McNemar interval by $1.05\times$–$4.16\times$; the
+bootstrap point is the Haldane-consistent $\exp(\widehat{\log\mathrm{OR}})$,
+the same quantity Cochran's $Q$ above consumes, not the raw $c/b$ the exact
+table prints (which is exactly $0$ at `gemma4:26b`'s zero discordant cell and
+cannot seed a resampling distribution) — the two are close but not identical by
+construction. The ranking of the five models is unchanged under either method.
+
+**Interpretation.** H6a holds without qualification and more strongly than
+pre-registered: all five per-model odds ratios are below 1, all five
+$p < 10^{-6}$, and containment reduces obedience for **every** model in the
+panel — there is no model for which it does "almost nothing." H6b also holds,
+but not in the shape the probe below suggested: the reduction's *direction* is
+uniform while its *magnitude* is genuinely heterogeneous (Cochran's $Q$,
+$p = 3.0\times10^{-6}$, $I^2 = 87\%$), ranging from `gemma4:26b`'s near-total
+elimination of the attack (relative reduction $\approx 100\%$, RD $0.032$ off a
+small base rate) through `qwen2.5:7b` and `qwen3-coder:30b`'s large partial
+reductions (RD $0.280$ and $0.253$, roughly $84\%$ and $47\%$ relative) to
+`qwen3:30b-instruct`'s smaller partial reduction (RD $0.141$, roughly $32\%$
+relative — "roughly one-third," the figure quoted in the abstract and §1). The
+correct deployable statement is therefore **"containment is a real mitigation
+for every model measured, but a defender cannot assume a uniform magnitude
+without checking the checkpoint"** — a stronger and more useful finding than
+either "containment works" (too vague to act on) or the probe's "works for
+some, not others" (which the full design shows was not what the data
+supported once properly powered; see below).
+
+One qualification to that statement, at the single-model level rather than the
+panel level: for `qwen3:30b-instruct`, the pre-registered cluster bootstrap
+does not exclude $\mathrm{OR} = 1$ (BCa $[0.05, 1.27]$), even though the
+trial-level exact McNemar does so decisively ($p = 5.9\times10^{-13}$, Table
+9). At $G = 34$ clusters this model carries the widest bootstrap interval in
+the panel — the disagreement is a small-$G$ power limitation of the
+cluster-level test on the model that already has the smallest effect size, not
+evidence the trial-level result is spurious. But it means "reduces obedience
+for every model, $p < 10^{-6}$" is trial-level-confirmed for all five and
+cluster-bootstrap-confirmed for four of five; `qwen3:30b-instruct` is the one
+model where the more conservative, pre-registered test does not itself rule
+out no effect, and a careful reader will find that gap in Table 9 within
+minutes. We report it rather than let the headline claim outrun what the
+stricter test supports.
+
+#### The preliminary $n = 120$ probe that motivated this stage (exploratory; superseded by the confirmatory numbers above)
+
+> **Everything below is the original $n = 120$ side probe
+> (`containment_probe.py`, raw transcripts in `containment_probe.jsonl`). It was
 > NOT part of the factorial design, was NOT drawn from the held-out split, and
-> covers 2 of 6 models, 3 of 7 framings and 1 of 4 carriers. It is reported
-> because it is what motivated promoting containment to a factor, and it is
-> labelled a probe everywhere it is mentioned. The main-design result is
-> `[RESULT: containment stage]`.**
+> covered 2 of 5 models, 3 of 7 framings and 1 of 4 carriers. It is kept here,
+> relabelled, because it is what motivated promoting containment to a
+> pre-registered factor — not because it is still evidence about the factor.
+> Where it disagrees with Table 9 above, Table 9 is correct and the probe was
+> underpowered, not wrong in kind.**
 
 Design: 2 models × 3 framings × 2 containment arms × 10 trials, identical payload
 text, identical model, identical seed across the two arms, `web_search` carrier,
@@ -2356,55 +2537,64 @@ Within the `spec_voice` stratum alone: `gemma4:26b` $10/10 \to 0/10$, RD $1.000$
 [0.608, 1.000], Fisher $p = 1.1\times10^{-5}$; `qwen3-coder:30b`
 $10/10 \to 9/10$, RD $0.100$ $[-0.189, 0.404]$, Fisher $p = 1$.
 
-Two observations, and one non-observation.
+Two observations from the probe, and the one non-observation that the
+confirmatory stage was built to resolve.
 
 **(a) The `spec_voice` framing is total under concatenation.** Pooled across both
 models, the policy-register payload concatenated into the tool result succeeded
 $20/20 = 1.000$, Wilson 95% CI $[0.839, 1.000]$. Neither model resisted it once.
 This is the probe agreeing with the held-out result of §7.5 by a completely
-different route, which is the only kind of corroboration a probe can offer.
+different route, and it is corroborated again by Table 9: `qwen3-coder:30b`'s
+concatenated rate at full scale is $0.536$, driven substantially by `spec_voice`.
 
-**(b) The containment effect is concentrated in exactly the framing that works,
-and it is model-dependent there.** Containment abolished `spec_voice` for
-`gemma4:26b` ($10/10 \to 0/10$) and left it essentially untouched for
-`qwen3-coder:30b` ($10/10 \to 9/10$). On the marginal risk-difference scale the
-two models differ by only $0.333 - 0.200 = 0.133$; on the scale that a defender
-cares about — *does wrapping the payload stop this attack* — one model says yes
-and the other says no. That divergence, not the pooled average, is why H6b
-(§4.6) targets the interaction.
+**(b) The probe read `qwen3-coder:30b` as barely affected by containment; the
+confirmatory stage shows this was a low-power false negative.** At $n = 30$
+pairs the probe found $16/30 \to 10/30$, $p = 0.19$ (ns) — "does almost
+nothing" was the honest reading of that cell at that sample size. At $n = 672$
+pairs, properly powered, the same contrast is $360/672 \to 190/672$
+($0.536 \to 0.283$), cond. OR $0.11$ $[0.07, 0.17]$,
+$p = 1.7\times10^{-35}$ — one of the **strongest** effects in the five-model
+panel, not the weakest. The probe's qualitative claim — that containment
+"abolishes the attack for one model and does almost nothing for another" — is
+the specific claim Table 9 corrects: containment does not do "almost nothing"
+for any model measured; what varies is how much it does.
 
-**(c) The non-observation: the interaction is not estimable from this probe.**
-A logistic fit with a model × arm term does not converge — `gemma4:26b`'s
-contained cell is $0/30$, which is complete separation, and the reported
-interaction coefficient runs to $\pm 25$ log-odds with a standard error of
-$10^5$. We report that it is unestimable rather than reporting the number. This
-is a sample-size problem with a known fix (the pre-registered stage of §4.8,
-sized by §4.10's power table at roughly 110 pairs per model for a 20 pp
-interaction), and it is the single clearest argument that containment needs the
-full design rather than a bigger probe.
+**(c) What the probe correctly anticipated.** The probe's non-observation was
+that the model × containment interaction could not be estimated from $n = 120$
+— `gemma4:26b`'s contained cell was $0/30$, complete separation, and a logistic
+interaction term did not converge. That diagnosis was right: the interaction
+needed the full design. What the full design shows the interaction to *be* is
+Cochran's $Q = 31.03$ ($p = 3.0\times10^{-6}$) on the per-model log-ORs above —
+real, significant heterogeneity in magnitude, coexisting with a uniform
+direction the $n = 120$ sample was too small to characterise correctly for
+`qwen3-coder:30b` specifically.
 
-**Probe limitations, stated because a probe that is quoted must carry them.**
-$n = 10$ per cell; two models; one carrier; one position; framings restricted to
-the three that survived the pilot; not split-controlled. And the probe's seed is
-derived from Python's built-in `hash()` over a tuple containing a string, which
-is salted per process — so the seeds are **recorded** in the JSONL and the
-arms within one probe run are correctly paired, but the derivation is **not
-reproducible across processes**. The main harness fixed this before any
-confirmatory data existed (§11.3); the probe predates that fix and was not
-re-run. A replication would produce different seeds and therefore different
-trajectories, though the pairing property that the analysis depends on would
-hold within that run.
+**Probe limitations, stated because a probe that is still quoted must carry
+them.** $n = 10$ per cell; two models; one carrier; one position; framings
+restricted to the three that survived the pilot; not split-controlled. And the
+probe's seed is derived from Python's built-in `hash()` over a tuple containing
+a string, which is salted per process — so the seeds are **recorded** in the
+JSONL and the arms within one probe run are correctly paired, but the
+derivation is **not reproducible across processes**. The main harness fixed
+this before any confirmatory data existed (§11.3); the probe predates that fix
+and was not re-run, and none of this affects `containment-heldout`, which uses
+the fixed seeding throughout.
 
-**Harness status.** The containment stage's execution path has been exercised by
-a 30-trial smoke run (`run_id = smoke-containment`, 15 trials per arm) whose
-purpose was to verify that both arms write, that the resume logic skips
-completed trials across the widened primary key, and that `analyze.py` refuses
-to marginalise over carrier. **Its outcome numbers are not reported and must not
-be**: 15 trials per arm on a smoke configuration is not evidence, and quoting it
-would be exactly the error §7.0 exists to prevent.
+**Harness status.** The containment stage's execution path was first exercised
+by a 30-trial smoke run (`run_id = smoke-containment`, 15 trials per arm) to
+verify that both arms write, that the resume logic skips completed trials
+across the widened primary key, and that `analyze.py` refuses to marginalise
+over carrier — its outcome numbers were never reported, correctly, since 15
+trials per arm on a smoke configuration is not evidence. The full stage
+subsequently ran to completion as `containment-heldout` (6,800 trials,
+integrity verified: `PRAGMA integrity_check: ok`, exact expected row counts),
+independently reproduced against both the private `trials.db` and the public
+repository's vendored copy, and is the source of every number in Table 9 above.
 
-**Figure 4 — Containment × model forest plot.**
-`[RESULT: figure — requires the containment stage]`
+**Figure 4 — Containment × model forest plot.** Emitted by `analyze.py` as
+`figures/containment_forest_containment-heldout.png` (per-model forest of
+Table 9) and `figures/containment_interaction_containment-heldout.png` (the
+model × containment cell structure underlying $Q$).
 
 ### 7.7 RQ5 — The register effect (exploratory; see §4.6 for why it is not an endpoint)
 
@@ -2736,25 +2926,30 @@ text and the record that carries it, at the tool wrapper, with no model change
 and no prompt engineering. It is the structural provenance signal that §8.1
 argues the boundary needs.
 
-The probe says it is large and **model-dependent**: $10/30 \to 0/30$ for one
-model, $16/30 \to 10/30$ for another, and within the framing that actually
-works, $10/10 \to 0/10$ versus $10/10 \to 9/10$. If that survives the full
-design, the deployable statement is uncomfortable but useful: *containment is a
-strong mitigation for some models and close to worthless for others, and which
-one you have is not knowable from any published property of the checkpoint.*
-That is a worse world than "containment works" and a much better one than not
-knowing — it converts an unmeasured assumption into a per-model property a
-deployment can test in an afternoon on its own hardware.
+The confirmatory `containment-heldout` stage (§7.6) says it helps **every**
+model, with no exceptions — all five per-model odds ratios below 1, all five
+$p < 10^{-6}$ — and that the *size* of the help is large and genuinely
+model-dependent: from `gemma4:26b`'s near-total elimination of the attack down
+to `qwen3:30b-instruct`'s partial, roughly one-third reduction (Cochran's $Q$,
+$p = 3.0\times10^{-6}$). The deployable statement this licenses is more useful
+than the one an early, underpowered probe suggested: *containment is a real
+mitigation for any model in this panel, but a defender cannot assume the same
+magnitude across checkpoints without measuring the one they run.* That is a
+better world than either "containment works uniformly" or "containment is a
+coin flip per model" — it converts an unmeasured assumption into a per-model
+property a deployment can test in an afternoon on its own hardware.
 
-Two cautions we will carry into the results. First, the probe's effect is
-concentrated in `spec_voice`; a mitigation that only bites where the attack is
-strongest is *more* valuable than one that bites uniformly, but it also means
-the pooled effect will be an average over cells where there is nothing to
-suppress. Second, and more importantly, **containment is a property of the
-wrapper, not of the data source**. It protects only if the wrapper re-serialises;
-an agent that passes upstream text through verbatim gets the `concatenated` arm
-whatever its schema says. The realistic deployment claim is therefore about
-*wrapper discipline*, and it is falsifiable: if a codebase's tools ever
+Two cautions the confirmatory result does not remove. First, the effect is not
+uniform across framings either — the probe's observation that it concentrates
+in `spec_voice`, the framing that actually succeeds, generalises: a mitigation
+that bites hardest where the attack is strongest is *more* valuable than one
+that bites uniformly, but it also means a pooled effect averages over cells
+where there was little to suppress in the first place. Second, and more
+importantly, **containment is a property of the wrapper, not of the data
+source**. It protects only if the wrapper re-serialises; an agent that passes
+upstream text through verbatim gets the `concatenated` arm whatever its schema
+says. The realistic deployment claim is therefore about *wrapper discipline*,
+and it is falsifiable: if a codebase's tools ever
 `return f"{header}{upstream_text}"`, the mitigation is not in force there.
 
 ### 8.5 Implications for local deployment
@@ -3010,29 +3205,68 @@ command; ours takes no arguments while `delete_records` takes a `filter`, and
 that difference is a live candidate explanation for the negative
 $\Delta_{\mathrm{safety}}$ on two models (§7.4). Not fixed here; prescribed.
 
-### 9.14d The pre-registered cluster bootstrap is specified but not implemented
+### 9.14d The pre-registered cluster bootstrap is now implemented, for the load-bearing quantities in both completed stages
 
-§4.10 fixes the **(model × attack) cell** as the unit of independent
-replication. `analyze.py` currently delivers trial-level Wilson / Newcombe /
-Tango intervals for proportions and cluster-robust sandwich SEs on model (with
-$t(G-1)$ critical values) plus an `attack_id`-clustered sensitivity fit for the
-regressions. **The bootstrap is not implemented.** Every proportion interval in
-§7 is therefore narrower than the pre-registered analysis would make it, by an
-amount that grows with the intraclass correlation within a cell — and with 20
-seed-sharing replicates per cell, that correlation is not small. §7.5 shows the
-magnitude concretely on the one quantity estimated both ways: OR $8.89$ carries
-$[6.63, 11.92]$ at the trial level and $[3.15, 25.07]$ clustered on model.
+§4.10 fixes the **(model × attack_id) cell** as the unit of independent
+replication. `analyze.py` delivers trial-level Wilson / Newcombe / Tango
+intervals for proportions, cluster-robust sandwich SEs on model (with
+$t(G-1)$ critical values) for the regressions, and — as of this revision —
+`analyze.cluster_bootstrap` (`APPENDIX_MATH.md` §M13), a nonparametric
+percentile-and-BCa bootstrap resampling (model × attack_id) clusters with
+replacement, $B = 2{,}000$. It has been run for the nine quantities that carry
+a headline conclusion: $\Delta_{\mathrm{inj}}$, $\Delta_{\mathrm{safety}}$ and
+the framing OR from `controls-heldout` ($G = 78$; §7.3–§7.5), and the pooled
+plus five per-model containment ORs from `containment-heldout` ($G = 170$
+pooled, $G = 34$ per model; §7.6). Coverage was validated on synthetic
+beta-binomial cluster-correlated data with a known true RD before trusting it
+on real data: percentile and BCa both hit $93.7\%$ nominal-$95\%$ coverage
+at $G = 24$ ($N_{\mathrm{sim}} = 300$, $B = 400$), and a negative-control run
+that resampled individual trials instead of clusters — the exact mistake this
+design guards against — measured only $75.3\%$ coverage, confirming the check
+discriminates the failure mode it exists to catch.
 
-We report the numbers now rather than withholding them because no headline
-conclusion here is borderline — $\Delta_{\mathrm{inj}} = 0.361$ against a
-$0.0030$ bound, and a 48-point framing effect, do not become fragile under a
-4× interval widening. The two places where width *does* carry the argument are
-the $\Delta_{\mathrm{safety}}$ null and the heterogeneity statistic, and both
-should be re-read once the bootstrap lands. It must land before submission.
+**It has not been run for every proportion interval in §7.** Tables 4 and 6,
+the per-cell figures, and the RQ2 correlations remain trial-level
+Wilson/Newcombe, which are narrower than the pre-registered analysis would make
+them by an amount that grows with the intraclass correlation within a cell —
+and with 20 seed-sharing replicates per cell, that correlation is not small.
+For the three `controls-heldout` quantities with a $G = 5$ model-clustered
+sandwich to compare against, the pattern is mixed rather than uniformly "in
+between": $\Delta_{\mathrm{inj}}$'s and $\Delta_{\mathrm{safety}}$'s bootstrap
+intervals fall inside the sandwich interval and outside the trial-level one, as
+finer-than-model, coarser-than-trial resampling would predict, and are
+$2.5$–$2.7\times$ tighter than the sandwich; the framing OR's bootstrap does
+not follow that pattern — its percentile upper bound ($30.78$) is *wider* than
+the sandwich's ($25.07$), while its BCa lower bound ($2.70$) tracks the
+sandwich's lower bound ($3.15$) closely, which is cross-method corroboration on
+the bound that matters for the paper's claim (that the OR is bounded well above
+1) even where the two methods disagree on the top of the range. §7.5 prints all
+three: OR $8.89$ carries $[6.63, 11.92]$ at the trial level, $[3.15, 25.07]$
+clustered on model ($G = 5$), and $[3.37, 30.78]$ percentile / $[2.70, 25.03]$
+BCa under the (model × attack_id) bootstrap ($G = 78$). Containment has no
+sandwich comparator (§7.6 fits no logistic model for it); there the bootstrap
+percentile interval is $1.05$–$4.16\times$ wider than the corresponding exact
+McNemar interval, model-dependent, with one model (`gemma4:26b`) where BCa is
+narrower than percentile rather than wider — flagged in §7.6 as a skewed
+bootstrap distribution rather than treated as a tighter estimate.
 
-### 9.14e Containment: an unbalanced factor, a probe, and an unestimated interaction
+No headline conclusion in this paper turned out to be borderline under any of
+these three widenings — $\Delta_{\mathrm{inj}} = 0.361$ against a $0.0030$
+bound, a 48-point framing effect, and the containment finding's five ORs all
+below 1 with all five $p < 10^{-6}$ all survive. The two places where interval
+width does carry part of the argument, the $\Delta_{\mathrm{safety}}$ null and
+the containment heterogeneity, are re-read against the bootstrap explicitly
+where they are reported (§7.4, §7.6) rather than left to this section alone.
+The bootstrap remains unimplemented for the stages that have not themselves
+run yet (register, ablation, defense, quantization); that gap closes as those
+stages do.
 
-Three separate limitations, kept together because they compound.
+### 9.14e Containment: an unbalanced factor by design, and what the probe understated
+
+Three items, kept together for continuity with earlier revisions of this
+section: one limitation that still stands in full (a), one that has narrowed
+from "unresolved" to "resolved, kept for provenance" (b), and one question the
+confirmatory stage answered directly (c).
 
 **(a) The factor is undefined on one carrier and the design is unbalanced by
 choice.** §4.4b argues that a plain-text "contained" arm would be a different
@@ -3040,27 +3274,37 @@ treatment (delimiting) wearing the same name, and declines to build it. The cost
 is that nothing in this paper speaks to whether structural containment helps for
 plain-text tool output — logs, READMEs, email bodies — which is a large share of
 real agent input. The analysis compensates by never marginalising over the
-undefined cell (§4.10), but compensation is not coverage.
+undefined cell (§4.10), but compensation is not coverage. This limitation is
+unaffected by `containment-heldout` running: that stage covers the same three
+structured carriers as the design always specified, and says nothing about
+`read_file`.
 
-**(b) All containment evidence to date is a probe.** $n = 120$, two models,
-one carrier, one position, three framings, not split-controlled, and seeded via
-Python's per-process-salted `hash()` so the derivation is not reproducible
-across processes (§7.6). It is labelled a probe everywhere it appears and no
-claim in this paper rests on it. It is evidence that the factor is worth
-measuring, not evidence about the factor.
+**(b) The `containment-heldout` stage is now the primary evidence; the probe is
+retained only as the exploratory record that preceded it.** The stage that used
+to be a gap — "all containment evidence to date is a probe, $n = 120$, two
+models, one carrier" — has run: 6,800 trials, five models, three structured
+carriers, three framings, held-out split, integrity-verified and independently
+reproduced twice (§7.6). No claim in this paper's headline findings rests on
+the probe any longer; it is labelled and subordinated everywhere it still
+appears (§7.6). What remains true of the probe, unchanged, is that it was never
+split-controlled and its seeds are not reproducible across processes — neither
+of which propagates into `containment-heldout`, which uses the fixed seeding
+scheme throughout (§11.3).
 
-**(c) The quantity the design targets is the one the probe cannot estimate.**
-H6b is about the model × containment interaction, and the probe's
-`gemma4:26b` contained cell is $0/30$ — complete separation, so the interaction
-coefficient is unbounded. The probe can say "this model went to zero and that
-one did not"; it cannot put an interval on the difference. That is exactly what
-the pre-registered stage is for, and §4.10 sizes it at roughly 110 matched pairs
-per model for a 20-point interaction — **twice** the per-model main-effect
-requirement of 56, because two independent paired variances add. (Four times is
-the rule for *total* $N$ across the two models, and applying it per model — as
-an earlier revision of §4.10 did — oversizes the stage by 2×.)
-If the stage is under-run, the honest output is a pair of per-model estimates
-and no interaction claim, not a pooled main effect.
+**(c) The interaction the design targeted is now estimated, via the route the
+design specified.** H6b concerns the model × containment interaction, which the
+$n = 120$ probe could not put an interval on — `gemma4:26b`'s contained cell
+was $0/30$, complete separation. §4.6 pre-registered Cochran's $Q$ on the
+per-model conditional log-ORs as the heterogeneity summary for exactly this
+reason, rather than a single interaction coefficient that a zero cell can break.
+That statistic is now computed: $Q = 31.03$, $\mathrm{df} = 4$,
+$p = 3.0\times10^{-6}$, $I^2 = 87.1\%$ (§7.6) — real, significant heterogeneity
+in magnitude, alongside a direction (containment helps) that turned out **not**
+to be heterogeneous at all, which is the part the probe's small sample read
+wrong for `qwen3-coder:30b` specifically (§7.6). A formal pairwise contrast
+between the largest and smallest per-model effect, with its own cluster
+bootstrap interval, was not separately computed; Cochran's $Q$ is the
+heterogeneity statistic the design promised and is what §7.6 reports against.
 
 ### 9.15 The register effect is confounded with payload length
 
@@ -3153,29 +3397,34 @@ on reasoning models under longer prompts, it will not be, and the same
 best/worst-case imputation must be printed there rather than assumed benign
 because it was benign here.
 
-### 9.17 Every completed result in this paper is conditional on `containment = concatenated`
+### 9.17 §7.1–§7.5's results are conditional on `containment = concatenated`; §7.6 is what removes that condition
 
-This section previously recorded containment as an *unmeasured* factor. It is
-now a **pre-registered factor of the design** (§4.4b, RQ6, §4.10) and has been
-probed at $n = 120$ (§7.6), but the confirmatory stage has not run — so the
-limitation below still stands in full, and is stated here rather than left to be
-inferred from §7.6's placement.
+This section previously recorded containment as an *unmeasured* factor, then as
+a factor probed only at $n = 120$. It is now a **pre-registered factor measured
+to completion** (§4.4b, RQ6, §4.10, §7.6), and the scope of the limitation
+below has narrowed accordingly rather than disappeared: it applies in full to
+the `controls-heldout` numbers in §7.1–§7.5, and no longer applies to §7.6,
+whose entire purpose is to measure both arms.
 
-**Every number in §7 was produced with the payload concatenated raw into the
-serialized tool result.** The controls stage predates the containment factor;
-all 4,680 of its trials are, factually and by database migration, at
-$S = \texttt{concatenated}$. The probe puts the size of that conditionality at
-up to $33$ percentage points on the marginal scale and at a *complete abolition
-of the attack* within the `spec_voice` × `gemma4:26b` cell.
+**Every number in §7.1–§7.5 was produced with the payload concatenated raw
+into the serialized tool result.** The controls stage predates the containment
+factor; all 4,680 of its trials are, factually and by database migration, at
+$S = \texttt{concatenated}$. §7.6 now puts the size of that conditionality at
+$0.160$ $[0.145, 0.175]$ pooled — up to a near-complete elimination of the
+attack on `gemma4:26b` specifically — measured on 3,353 matched pairs across
+five models, not extrapolated from the $n = 120$ probe that originally flagged
+the concern.
 
-The consequence for a reader is specific. These rates model a poisoned data
-source whose text is **passed through** by a tool wrapper that does not
-re-serialise it — which is the common case, and the case a defender should
-assume by default. They must **not** be generalised to an agent whose tool
-wrappers parse upstream results and re-encode untrusted text into structured
-fields. For that deployment shape, on the two models probed, the rate is either
-much lower or barely changed, and which of those it is appears to be a property
-of the checkpoint.
+The consequence for a reader is specific and, as of §7.6, quantified rather
+than bounded only by a probe. §7.1–§7.5's rates model a poisoned data source
+whose text is **passed through** by a tool wrapper that does not re-serialise
+it — which is the common case, and the case a defender should assume by
+default. They must **not** be generalised to an agent whose tool wrappers parse
+upstream results and re-encode untrusted text into structured fields. For that
+deployment shape, on the five models measured in `containment-heldout`, the
+rate is *always* lower — never barely changed, never unaffected — but by an
+amount that is a property of the checkpoint, ranging from near-total
+elimination to a partial, roughly one-third reduction (§7.6).
 
 The historical calibration observation that motivated all of this is kept for
 provenance: while fixing the `position = middle` defect (§4.4) we briefly
@@ -3183,8 +3432,11 @@ implemented the payload as a well-formed record of the carrier's own type, and
 with payload text, model, carrier, framing and **seeds** held fixed,
 `gemma4:26b` on `spec_voice` at head obeyed **3/3** concatenated and **0/3**
 contained. That is $n = 3$ per arm on one model — a calibration observation, not
-a result — and it is superseded by the $n = 120$ probe of §7.6, which is itself
-superseded by the pre-registered stage that has not run.
+a result — and it is superseded by the $n = 120$ probe of §7.6 (itself
+preliminary), which is in turn superseded by the confirmatory
+`containment-heldout` stage: `gemma4:26b` obeyed $22/680$ concatenated and
+$0/680$ contained, the same qualitative pattern the $n = 3$ observation first
+noticed, now measured at scale with an interval.
 
 ---
 
@@ -3396,21 +3648,28 @@ python -X utf8 runner.py --stage screening --split heldout --trials 10
 # a crash, a reboot, a full disk, or the GPU being taken for something else.
 python -X utf8 runner.py --stage screening --split heldout --trials 20
 
-# THE COMPLETED STAGE — the source of every real number in 7.1-7.5, 7.10-7.11.
+# THE FIRST COMPLETED STAGE — the source of every real number in 7.1-7.5, 7.10-7.11.
 # 13 attack cells x 3 conditions x 20 trials x 6 models = 4,680 trials.
 python -X utf8 runner.py --stage controls --split heldout --trials 20
+
+# THE SECOND COMPLETED STAGE — the source of every real number in 7.6.
+# 34 attack cells x 20 trials x 2 containment arms x 5 models = 6,800 trials.
+# (deepseek-r1:14b excluded a priori: 0/258 delivered attack trials in
+# controls-heldout, so it can contribute no McNemar-discordant pairs.)
+python -X utf8 runner.py --stage containment --split heldout --trials 20
 
 # Later stages
 python -X utf8 runner.py --stage ablation    --split heldout --trials 20
 python -X utf8 runner.py --stage defense     --split heldout --trials 20
-python -X utf8 runner.py --stage containment --split heldout --trials 20
 
 # All tables and figures
-python -X utf8 analyze.py --run-id screening-heldout  --split heldout
-python -X utf8 analyze.py --run-id controls-heldout   --split heldout
+python -X utf8 analyze.py --run-id screening-heldout    --split heldout
+python -X utf8 analyze.py --run-id controls-heldout     --split heldout
+python -X utf8 analyze.py --run-id containment-heldout  --split heldout
 
-# The containment probe (n=120). Reported in 7.6 as a PROBE, not as a result of
-# the main design. Raw transcripts append to containment_probe.jsonl.
+# The original containment probe (n=120), superseded by containment-heldout
+# above. Reported in 7.6 as the preliminary evidence that motivated the stage,
+# not as a result of the main design. Raw transcripts in containment_probe.jsonl.
 python -X utf8 containment_probe.py --trials 10
 ```
 
@@ -3458,8 +3717,8 @@ Recorded explicitly so that changes to the plan are visible rather than silent.
 | 11 | Seed keyed on (attack_id, condition, defense, trial_idx) | Seed keyed on (attack_id, trial_idx) | The arms the analysis pairs now share sampling noise, which is where McNemar's power comes from (§11.3) |
 | 12 | Defense stage at paraphrase 0 | Defense stage over all three paraphrases | At paraphrase 0 the held-out slice had zero `html_comment` cells, so RQ4 was unanswerable on held-out for a third of the surviving framings (§4.8) |
 | 13 | Containment listed as a factor in the design table, with the probe numbers and the `read_file` decision | Same factor, now carrying estimands E9/E10, hypotheses H6a/H6b, a primary-key column, a costed stage and a power calculation — **no substantive change; the paper catches up to the design** | Recorded as a non-deviation so a reader diffing the two documents does not mistake elaboration for drift (§4.4b, §4.6, §7.6) |
-| 14 | Statistics: Wilson, GLMM, McNemar, Holm, one per-cell power figure | Adds Newcombe for unpaired differences, **Tango** for paired ones, exact-McNemar conditional ORs, cluster-robust sandwich SEs with $t(G-1)$ critical values, Cochran's $Q$ on conditional log-ORs, and a (model × attack) cluster bootstrap — specified, not yet implemented (§9.14d) | The Wald paired interval that `DESIGN.md` implies is exactly zero-width at $b = c = 0$, and its exact coverage runs from 55% to 94% across the rare-discordance regime this study sits in — worst where a working defense puts the data (§3.7) |
-| 15 | No containment hypothesis stated | The **model × containment interaction** (H6b), not the pooled main effect, is the pre-registered target | The probe suggests a pooled effect would license a defence recommendation that is false for at least one model; a design that can only report the average answers the wrong question (§4.6) |
+| 14 | Statistics: Wilson, GLMM, McNemar, Holm, one per-cell power figure | Adds Newcombe for unpaired differences, **Tango** for paired ones, exact-McNemar conditional ORs, cluster-robust sandwich SEs with $t(G-1)$ critical values, Cochran's $Q$ on conditional log-ORs, and a (model × attack_id) cluster bootstrap — implemented and run for the nine load-bearing quantities in the two completed stages, not yet run for the stages still pending (§9.14d) | The Wald paired interval that `DESIGN.md` implies is exactly zero-width at $b = c = 0$, and its exact coverage runs from 55% to 94% across the rare-discordance regime this study sits in — worst where a working defense puts the data (§3.7) |
+| 15 | No containment hypothesis stated | The **model × containment interaction** (H6b), not the pooled main effect, is the pre-registered target — and, on the completed `containment-heldout` stage, is confirmed real via Cochran's $Q$ ($p = 3.0\times10^{-6}$) rather than merely targeted (§7.6) | An early probe suggested a pooled effect would license a defence recommendation that is false for at least one model; a design that can only report the average answers the wrong question. The confirmatory stage shows the probe's specific model-level read was itself wrong at low power, but its structural point — that the interaction, not the average, is what matters — was correct (§4.6, §7.6) |
 | 16 | Outcomes defined prosaically | Outcomes, estimands and identification assumptions stated as equations, with a DAG, four named assumptions and a testable implication (§3.0–§3.7); derivations in `APPENDIX_MATH.md` | The delivery-conditioning argument is the paper's methodological contribution and has to be stated precisely enough to be attacked |
 | 17 | "at n=20/cell, a 25pp difference is detectable at 80% power" | Power computed at the resampling unit, and for containment at the **paired** unit with the exact test's conservatism simulated rather than assumed (§4.10) | The normal-approximation McNemar formula overstates power by 2–4 points at the $n$ this design uses; the simulated column is the one to read |
 | 18 | "Framing, position, authority and **carrier** cannot affect delivery" | The pre-payload-invisible set is framing, position, authority and **containment**. `carrier` is excluded from the flatness family and from the delivered-only regression | $D$ is *defined* as a call to the carrier tool named at turn 1, so $K \to D$ exists by construction. Leaving carrier in the family would fire a falsification alarm on the ablation stage for a difference the design predicts, and conditioning on $D$ would collider-bias $\beta_K$ (§3.6, `APPENDIX_MATH.md` §M0). Corrected in `DESIGN.md` as well |
@@ -3506,9 +3765,10 @@ grep -nE '\*\*[A-Z][A-Za-z]+( (and|,) [A-Z][A-Za-z]+)*'"'"'? \([12][0-9]{3}\)' \
 
 **The inverse check matters more, and no tool performs it.** A number that
 appears *without* a marker is claiming to have been measured. Every such number
-in §7 must be traceable to a row of `tables_controls-heldout_heldout.md`, to
-`containment_probe.jsonl`, or to a computation over `trials.db` that a reader
-can re-run from §11.4. Every simulated number must name the `power.py` section
+in §7 must be traceable to a row of `tables_controls-heldout_heldout.md` or
+`tables_containment-heldout_heldout.md`, to `containment_probe.jsonl`, or to a
+computation over `trials.db` that a reader can re-run from §11.4. Every
+simulated number must name the `power.py` section
 that produces it, so that a reader can re-run it and get the same value. There
 is no citation, no venue, no author and no numeric result in **either**
 document that was produced from memory or by estimation, and any audit should
