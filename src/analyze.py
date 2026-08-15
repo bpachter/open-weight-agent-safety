@@ -10,6 +10,7 @@ import warnings
 from dataclasses import dataclass, field
 from itertools import permutations
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -1908,6 +1909,523 @@ def framing_contrasts(df: pd.DataFrame, rep: Report, alpha: float) -> None:
               pd.DataFrame(rows).sort_values("p_fisher").reset_index(drop=True))
 
 
+# ── 4e. pre-registered (model x attack_id) cluster bootstrap ────────────────
+# Full derivation, the percentile-vs-BCa distinction and a coverage validation
+# against known ground truth are in APPENDIX_MATH.md §M13. This is the
+# resampling unit the paper's own text (§7.5) says is still owed: neither the
+# trial-level interval (independence assumed, false — 20 trials share an
+# attack_id) nor the model-clustered sandwich (correct clustering variable,
+# but the sandwich is a large-G asymptotic approximation and G is 5-6 here)
+# is the pre-registered interval. Resampling (model, attack_id) BLOCKS with
+# replacement needs no large-G approximation and no asymptotic normality of a
+# sandwich estimator; its own cost is Monte Carlo noise at finite B, which is
+# controlled by using B = 2000 and reporting BCa beside the plain percentile
+# interval so a skewed bootstrap distribution is visible rather than hidden
+# behind a single number.
+
+CLUSTER_BOOT_SEED = 20260804      # == power.py's SEED. Same fixed-seed Monte
+                                    # Carlo convention, not a second one invented
+                                    # for this file. Every quantity below adds a
+                                    # distinct small offset, exactly as power.py
+                                    # does for its own simulations (SEED+1,
+                                    # SEED+11, SEED+14, ...), so each bootstrap
+                                    # draws an independent stream and is
+                                    # separately reproducible from the number
+                                    # printed next to it.
+CLUSTER_BOOT_B = 2000
+CLUSTER_BOOT_SEEDS = {             # documented, not regenerated per run
+    "delta_inj": CLUSTER_BOOT_SEED + 101,
+    "delta_safety": CLUSTER_BOOT_SEED + 102,
+    "framing_or": CLUSTER_BOOT_SEED + 103,
+    "containment_pooled": CLUSTER_BOOT_SEED + 110,
+    "containment_gemma4:26b": CLUSTER_BOOT_SEED + 111,
+    "containment_qwen2.5:7b": CLUSTER_BOOT_SEED + 112,
+    "containment_qwen3-coder:30b": CLUSTER_BOOT_SEED + 113,
+    "containment_qwen3.6:27b": CLUSTER_BOOT_SEED + 114,
+    "containment_qwen3:30b-instruct": CLUSTER_BOOT_SEED + 115,
+}
+
+
+@dataclass
+class BootCI:
+    label: str
+    point: float
+    n_clusters: int
+    B: int
+    B_used: int
+    seed: int
+    percentile: tuple[float, float]
+    bca: tuple[float, float]
+    z0: float
+    accel: float
+    width_ratio: float          # bca width / percentile width
+
+
+def cluster_bootstrap(clusters: dict, estimator: Callable[[list], float],
+                      alpha: float = 0.05, B: int = CLUSTER_BOOT_B,
+                      seed: int = CLUSTER_BOOT_SEED, label: str = "") -> BootCI | None:
+    """Nonparametric cluster bootstrap: resample CLUSTERS with replacement.
+
+    `clusters` maps a cluster key -> an opaque payload (whatever `estimator`
+    needs). `estimator` takes a LIST of payloads (the drawn clusters, with
+    repeats) and returns one float; it is called once on the full cluster set
+    for the point estimate, B times on resampled draws for the bootstrap
+    distribution, and G times on leave-one-cluster-out jackknife draws for the
+    BCa acceleration constant. Resampling trials directly, or resampling model
+    alone, both throw away exactly the dependence this exists to respect —
+    see the module docstring above this function.
+
+    BCa (bias-corrected and accelerated) needs:
+      z0 = Phi^-1( proportion of bootstrap replicates below the point estimate )
+      a  = the jackknife skewness of the leave-one-cluster-out estimates
+    then adjusts the percentile levels themselves rather than the raw alpha/2,
+    1-alpha/2 percentiles — which is what makes it correct to second order
+    when the bootstrap distribution is skewed and a plain percentile interval
+    is not (APPENDIX_MATH.md §M13.2 works the algebra).
+
+    Returns None if there are too few clusters (< 4) or too many degenerate
+    replicates to trust an interval (< 25% of B produced a finite statistic).
+    """
+    keys = list(clusters.keys())
+    G = len(keys)
+    if G < 4:
+        return None
+    point = estimator([clusters[k] for k in keys])
+    if not np.isfinite(point):
+        return None
+
+    rng = np.random.default_rng(seed)
+    reps = np.empty(B)
+    for i in range(B):
+        draw = rng.integers(0, G, size=G)
+        reps[i] = estimator([clusters[keys[j]] for j in draw])
+    finite = reps[np.isfinite(reps)]
+    b_used = int(finite.size)
+    if b_used < max(100, B // 4):
+        return None
+    lo_p = float(np.quantile(finite, alpha / 2))
+    hi_p = float(np.quantile(finite, 1 - alpha / 2))
+
+    jack = np.array([estimator([clusters[k] for j, k in enumerate(keys) if j != i])
+                     for i in range(G)])
+    jack = jack[np.isfinite(jack)]
+    if jack.size < max(4, int(0.8 * G)):
+        bca: tuple[float, float] = (float("nan"), float("nan"))
+        z0 = a_hat = float("nan")
+    else:
+        prop = float(np.mean(finite < point))
+        eps = 1.0 / (b_used + 1)          # keep z0 finite at prop in {0, 1}
+        prop = min(max(prop, eps), 1 - eps)
+        z0 = float(stats.norm.ppf(prop))
+        jbar = jack.mean()
+        num = float(np.sum((jbar - jack) ** 3))
+        den = 6.0 * float(np.sum((jbar - jack) ** 2)) ** 1.5
+        a_hat = num / den if den else 0.0
+
+        def _adj(z: float) -> float:
+            denom = 1 - a_hat * (z0 + z)
+            if denom == 0 or not np.isfinite(denom):
+                return float("nan")
+            return float(stats.norm.cdf(z0 + (z0 + z) / denom))
+
+        p_lo = _adj(float(stats.norm.ppf(alpha / 2)))
+        p_hi = _adj(float(stats.norm.ppf(1 - alpha / 2)))
+        if np.isfinite(p_lo) and np.isfinite(p_hi):
+            bca = (float(np.quantile(finite, p_lo)), float(np.quantile(finite, p_hi)))
+        else:
+            bca = (float("nan"), float("nan"))
+
+    w_p = hi_p - lo_p
+    w_b = (bca[1] - bca[0]) if all(np.isfinite(bca)) else float("nan")
+    ratio = (w_b / w_p) if w_p and np.isfinite(w_b) else float("nan")
+    return BootCI(label=label, point=point, n_clusters=G, B=B, B_used=b_used, seed=seed,
+                 percentile=(lo_p, hi_p), bca=bca, z0=z0, accel=a_hat, width_ratio=ratio)
+
+
+def _boot_divergence_note(bc: BootCI) -> str:
+    if not (np.isfinite(bc.bca[0]) and np.isfinite(bc.bca[1])):
+        return "BCa not computable (jackknife degenerate) — percentile only."
+    if not np.isfinite(bc.width_ratio) or bc.width_ratio < (2 / 3) or bc.width_ratio > 1.5:
+        return (f"BCa and percentile DIVERGE MATERIALLY (width ratio {bc.width_ratio:.2f}, "
+                f"z0={bc.z0:.3f}, a-hat={bc.accel:.4f}) — sign of a skewed bootstrap "
+                "distribution; prefer BCa.")
+    return f"BCa tracks percentile closely (width ratio {bc.width_ratio:.2f})."
+
+
+# --- controls-heldout: Delta_inj, Delta_safety, framing OR ------------------
+
+def _controls_clusters(df: pd.DataFrame) -> dict:
+    v = valid(df)
+    out = {}
+    for key, g in v.groupby(["model", "attack_id"], sort=False):
+        out[key] = {
+            "condition": g["condition"].to_numpy(),
+            "framing": g["framing"].to_numpy(),
+            "delivered": g["delivered"].to_numpy(dtype=bool),
+            "obeyed": g["obeyed"].to_numpy(dtype=np.int64),
+            "forbidden": g["forbidden_called"].to_numpy(dtype=np.int64),
+        }
+    return out
+
+
+def _concat_field(parts: list[dict], field_: str) -> np.ndarray:
+    return np.concatenate([p[field_] for p in parts]) if parts else np.array([])
+
+
+def _est_delta_inj(parts: list[dict]) -> float:
+    cond = _concat_field(parts, "condition")
+    deliv = _concat_field(parts, "delivered")
+    forb = _concat_field(parts, "forbidden")
+    a = (cond == "attack") & deliv
+    c = (cond == "clean") & deliv
+    if not a.any() or not c.any():
+        return float("nan")
+    return float(forb[a].mean() - forb[c].mean())
+
+
+def _est_delta_safety(parts: list[dict]) -> float:
+    cond = _concat_field(parts, "condition")
+    deliv = _concat_field(parts, "delivered")
+    ob = _concat_field(parts, "obeyed")
+    ben = (cond == "benign") & deliv
+    atk = (cond == "attack") & deliv
+    if not atk.any() or not ben.any():
+        return float("nan")
+    return float(ob[ben].mean() - ob[atk].mean())
+
+
+def _est_framing_or(parts: list[dict]) -> float:
+    cond = _concat_field(parts, "condition")
+    deliv = _concat_field(parts, "delivered")
+    fr = _concat_field(parts, "framing")
+    ob = _concat_field(parts, "obeyed")
+    atk = (cond == "attack") & deliv
+    sv = atk & (fr == "spec_voice")
+    admin = atk & (fr == "admin_note")
+    if not sv.any() or not admin.any():
+        return float("nan")
+    orv, _, _, _ = odds_ratio(int(ob[sv].sum()), int(sv.sum()),
+                              int(ob[admin].sum()), int(admin.sum()))
+    return orv
+
+
+def _rd_cluster_glm(df: pd.DataFrame, ref_level: str, alt_level: str, outcome: str,
+                    alpha: float) -> tuple[float, float, float, int] | None:
+    """Cluster-robust linear-probability (OLS) risk difference.
+
+    The RD-scale counterpart to `logistic_cluster`'s OR-scale sandwich: an OLS
+    coefficient on a 0/1 outcome IS a risk difference directly, so this is the
+    natural way to put a cluster-robust sandwich SE on Delta_inj / Delta_safety,
+    which are Fisher/Newcombe quantities today and have no GLM-fit analogue in
+    this file otherwise. New in this pass, added specifically to give these two
+    quantities the same trial-level-vs-clustered pair the framing OR already
+    has (Tables 5 and 7) before the bootstrap is compared against either.
+    """
+    v = valid(df)
+    d = v[(v["delivered"] == 1) & v["condition"].isin([ref_level, alt_level])].copy()
+    if d.empty or d["condition"].nunique() < 2:
+        return None
+    d["condition"] = pd.Categorical(d["condition"], categories=[ref_level, alt_level])
+    n_clusters = int(d["model"].nunique())
+    if n_clusters < 2:
+        return None
+    # bse is a CACHED property (sqrt of diag(cov_params())), computed lazily on
+    # first access — so the warning suppression has to cover that first access
+    # too, not just .fit(), or a negative-noise diagonal entry on a term this
+    # function never reads (observed on the intercept, not on `term` below)
+    # leaks a raw RuntimeWarning onto the report's stdout.
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            res = smf.ols(f"{outcome} ~ C(condition)", data=d).fit(
+                cov_type="cluster", cov_kwds={"groups": d["model"].values})
+            term = f"C(condition)[T.{alt_level}]"
+            if term not in res.params.index:
+                return None
+            b = float(res.params[term])
+            se = float(res.bse[term])
+    except Exception:                                                # noqa: BLE001
+        return None
+    if not np.isfinite(se):
+        return None
+    df_t = max(n_clusters - 1, 1)
+    tcrit = float(stats.t.ppf(1 - alpha / 2, df_t))
+    return (b, b - tcrit * se, b + tcrit * se, n_clusters)
+
+
+def _framing_analytic_intervals(df: pd.DataFrame, alpha: float):
+    """The two EXISTING intervals for spec_voice vs admin_note (Tables 5, 7),
+    read off the functions that already produce them — not re-derived."""
+    v = valid(df)
+    d = v[(v["condition"] == "attack") & (v["delivered"] == 1)]
+    sv = d[d["framing"] == "spec_voice"]
+    admin = d[d["framing"] == "admin_note"]
+    trial = odds_ratio(int(sv["obeyed"].sum()), len(sv),
+                       int(admin["obeyed"].sum()), len(admin), alpha)
+
+    scratch = Report("scratch")
+    res = logistic_cluster(df, scratch, alpha, sample="delivered")
+    clustered = None
+    term = "C(framing)[T.spec_voice]"
+    if res is not None and term in res.params.index:
+        b = float(res.params[term])
+        se = float(res.bse[term])
+        n_clusters = int(d["model"].nunique())
+        tcrit = float(stats.t.ppf(1 - alpha / 2, max(n_clusters - 1, 1)))
+        clustered = (_exp(b), _exp(b - tcrit * se), _exp(b + tcrit * se), n_clusters)
+    return trial, clustered
+
+
+# --- containment-heldout: pooled and per-model paired OR --------------------
+
+def _containment_matched(df: pd.DataFrame, scope: ContainmentScope,
+                         model: str | None = None) -> pd.DataFrame | None:
+    """Matched, BOTH-DELIVERED (contained, concatenated) pairs, attack condition.
+
+    Same scope restriction and the same `_pair_containment` call as 4b-C's
+    [both delivered] rows, so `mcnemar_block` on this frame reproduces the
+    report's own pooled / per-model OR exactly (checked against a live run
+    before this function was relied on), and grouping it by cluster gives the
+    bootstrap its resampling blocks without re-deriving the pairing.
+    """
+    v = containment_frame(valid(_with_containment(df)), scope)
+    sub = v[v["condition"] == "attack"]
+    if model is not None:
+        sub = sub[sub["model"] == model]
+    if sub.empty:
+        return None
+    m, _msg = _pair_containment(sub)
+    if m is None:
+        return None
+    m = m[(m["delivered_a"] == 1) & (m["delivered_b"] == 1)]
+    return m if not m.empty else None
+
+
+def _containment_clusters(m: pd.DataFrame, model: str | None) -> dict:
+    cluster_cols = ["attack_id"] if model is not None else ["model", "attack_id"]
+    return {key: {"a": g["obeyed_a"].to_numpy(dtype=np.int64),
+                 "b": g["obeyed_b"].to_numpy(dtype=np.int64)}
+           for key, g in m.groupby(cluster_cols, sort=False)}
+
+
+def _est_containment_or(parts: list[dict]) -> float:
+    """Haldane-consistent conditional OR exp(log(b/c)), the SAME correction
+    `_paired_logor` already applies for Cochran's Q — NOT the raw b/c the
+    McNemar table prints as its point (which is 0 or +inf exactly at the zero
+    cells the correction exists for, e.g. gemma4:26b's b=0). Reported and
+    compared explicitly, not silently swapped for the table's point."""
+    a = _concat_field(parts, "a")
+    b_ = _concat_field(parts, "b")
+    if a.size == 0:
+        return float("nan")
+    b = int(np.sum((a == 1) & (b_ == 0)))
+    c = int(np.sum((a == 0) & (b_ == 1)))
+    lo = _paired_logor({"b (a=1,b=0)": b, "c (a=0,b=1)": c})
+    return math.exp(lo) if np.isfinite(lo) else float("nan")
+
+
+def cluster_bootstrap_report(df: pd.DataFrame, rep: Report, alpha: float,
+                             scope: ContainmentScope) -> None:
+    """4e. Pre-registered (model x attack_id) cluster bootstrap.
+
+    Applies `cluster_bootstrap` to the headline quantities this stage can
+    support: Delta_inj, Delta_safety and the framing OR when the controls-style
+    arms (attack/clean/benign, >=2 framings) are present; the pooled and
+    per-model containment OR when containment varies and is definable. Neither
+    is assumed — each is checked and skipped with a note if the run does not
+    have it, exactly like every other section in this file.
+    """
+    rep.head("4e. Pre-registered (model x attack_id) cluster bootstrap")
+    v = valid(df)
+    if v.empty:
+        rep.note("No valid trials. Bootstrap not applicable.")
+        return
+
+    conditions = set(v["condition"].unique())
+    d_atk_del = v[(v["condition"] == "attack") & (v["delivered"] == 1)]
+    has_framing_pair = (bool((d_atk_del["framing"] == "spec_voice").any())
+                        and bool((d_atk_del["framing"] == "admin_note").any()))
+    controls_any = {"attack", "clean"} <= conditions or {"attack", "benign"} <= conditions \
+        or has_framing_pair
+
+    if controls_any:
+        clusters_ctrl = _controls_clusters(v)
+        rep.note(f"Resampling unit: (model, attack_id), G = {len(clusters_ctrl)} clusters "
+                 f"in this run. B = {CLUSTER_BOOT_B} replicates per quantity, seeds listed "
+                 "per row (base " + str(CLUSTER_BOOT_SEED) + " + a fixed per-quantity offset, "
+                 "power.py's own convention). Full algorithm: APPENDIX_MATH.md §M13.")
+
+        rd_rows = []
+        if {"attack", "clean"} <= conditions:
+            bc = cluster_bootstrap(clusters_ctrl, _est_delta_inj, alpha,
+                                   seed=CLUSTER_BOOT_SEEDS["delta_inj"],
+                                   label="Delta_inj")
+            an = _rd_cluster_glm(df, "clean", "attack", "forbidden_called", alpha)
+            if bc is not None:
+                rd_rows.append({
+                    "quantity": "Delta_inj = P(forbidden|attack) - P(forbidden|clean)",
+                    "point (bootstrap)": round(bc.point, 4),
+                    "analytic (LPM, cluster-robust on model)":
+                        ci_str(*an[:3]) + f" (G={an[3]})" if an else "not computable",
+                    "bootstrap percentile [95% CI]": ci_str(bc.point, *bc.percentile),
+                    "bootstrap BCa [95% CI]": ci_str(bc.point, *bc.bca)
+                        if all(np.isfinite(bc.bca)) else "n/a",
+                    "G": bc.n_clusters, "B_used": bc.B_used, "seed": bc.seed,
+                    "note": _boot_divergence_note(bc)})
+            else:
+                rep.note("Delta_inj: bootstrap not computable (too few clusters or too "
+                         "many degenerate replicates).")
+        else:
+            rep.note("Delta_inj bootstrap: needs 'attack' and 'clean' conditions, both "
+                     "absent or one missing here. Skipped.")
+
+        if {"attack", "benign"} <= conditions:
+            bc = cluster_bootstrap(clusters_ctrl, _est_delta_safety, alpha,
+                                   seed=CLUSTER_BOOT_SEEDS["delta_safety"],
+                                   label="Delta_safety")
+            an = _rd_cluster_glm(df, "attack", "benign", "obeyed", alpha)
+            if bc is not None:
+                rd_rows.append({
+                    "quantity": "Delta_safety = P(obeyed|benign) - P(obeyed|attack)",
+                    "point (bootstrap)": round(bc.point, 4),
+                    "analytic (LPM, cluster-robust on model)":
+                        ci_str(*an[:3]) + f" (G={an[3]})" if an else "not computable",
+                    "bootstrap percentile [95% CI]": ci_str(bc.point, *bc.percentile),
+                    "bootstrap BCa [95% CI]": ci_str(bc.point, *bc.bca)
+                        if all(np.isfinite(bc.bca)) else "n/a",
+                    "G": bc.n_clusters, "B_used": bc.B_used, "seed": bc.seed,
+                    "note": _boot_divergence_note(bc)})
+            else:
+                rep.note("Delta_safety: bootstrap not computable (too few clusters or "
+                         "too many degenerate replicates).")
+        else:
+            rep.note("Delta_safety bootstrap: needs 'attack' and 'benign' conditions, "
+                     "both absent or one missing here. Skipped.")
+
+        if rd_rows:
+            rep.table("Cluster bootstrap vs cluster-robust sandwich (linear-probability "
+                      "model, new comparator) — Delta_inj, Delta_safety",
+                      pd.DataFrame(rd_rows))
+            rep.note("The LPM sandwich is the RD-scale analogue of the OR-scale "
+                     "cluster-robust GLM already used for framing (4a); it did not exist "
+                     "in this file before this pass. Neither it nor the bootstrap replaces "
+                     "the Newcombe interval already printed in section 2b — all describe "
+                     "the same point differently, and are reported side by side rather "
+                     "than one overwriting another.")
+
+        if has_framing_pair:
+            trial, clustered = _framing_analytic_intervals(df, alpha)
+            bc = cluster_bootstrap(clusters_ctrl, _est_framing_or, alpha,
+                                   seed=CLUSTER_BOOT_SEEDS["framing_or"],
+                                   label="framing OR")
+            if bc is not None:
+                fr_rows = [{
+                    "source": "trial-level (Table 5, Haldane/Fisher)",
+                    "OR [95% CI]": ci_str(trial[0], trial[1], trial[2], 2),
+                    "detail": "trials treated as independent"},
+                    {"source": "model-clustered sandwich GLM (Table 7)",
+                     "OR [95% CI]": ci_str(*clustered[:3], 2) if clustered else "n/a",
+                     "detail": f"G={clustered[3]}" if clustered else "fit not available"},
+                    {"source": "cluster bootstrap (model x attack_id), percentile",
+                     "OR [95% CI]": ci_str(bc.point, *bc.percentile, 2),
+                     "detail": f"G={bc.n_clusters}, B_used={bc.B_used}, seed={bc.seed}"},
+                    {"source": "cluster bootstrap (model x attack_id), BCa",
+                     "OR [95% CI]": (ci_str(bc.point, *bc.bca, 2)
+                                     if all(np.isfinite(bc.bca)) else "n/a"),
+                     "detail": _boot_divergence_note(bc)}]
+                rep.table("Framing OR (spec_voice vs admin_note) — trial-level, "
+                          "model-clustered sandwich, and the pre-registered bootstrap, "
+                          "side by side", pd.DataFrame(fr_rows))
+                rep.note("This is the interval §7.5 of the paper says is still owed: "
+                         "'Neither interval is yet the pre-registered (model x attack) "
+                         "cluster bootstrap.' It now is, above, printed beside both "
+                         "existing intervals rather than replacing either.")
+            else:
+                rep.note("Framing OR: bootstrap not computable (too few clusters or too "
+                         "many degenerate replicates).")
+        else:
+            rep.note("Framing OR bootstrap: needs delivered attack trials in both "
+                     "'spec_voice' and 'admin_note'. Not present here. Skipped.")
+    else:
+        rep.note("Controls-style quantities (Delta_inj, Delta_safety, framing OR): none "
+                 "of their preconditions hold in this run. Skipped.")
+
+    if not scope.available:
+        rep.note("Containment OR bootstrap: containment does not vary or is not "
+                 "definable for any carrier in this run. Skipped.")
+        return
+
+    m_pool = _containment_matched(df, scope, model=None)
+    if m_pool is None:
+        rep.note("Containment OR bootstrap: no matched, both-delivered attack pairs "
+                 "in the definable carriers. Skipped.")
+        return
+
+    cont_rows = []
+    existing_pool = mcnemar_block(m_pool, "obeyed", "ALL MODELS [both delivered]", alpha)
+    clusters_pool = _containment_clusters(m_pool, model=None)
+    bc = cluster_bootstrap(clusters_pool, _est_containment_or, alpha,
+                           seed=CLUSTER_BOOT_SEEDS["containment_pooled"],
+                           label="containment OR pooled")
+    if bc is not None:
+        cont_rows.append({
+            "model": "ALL MODELS (pooled)",
+            "exact McNemar OR [95% CI] (existing, raw b/c point)":
+                existing_pool["cond. OR [95% CI exact]"],
+            "bootstrap point (Haldane-consistent)": round(bc.point, 4),
+            "bootstrap percentile [95% CI]": ci_str(bc.point, *bc.percentile, 2),
+            "bootstrap BCa [95% CI]": ci_str(bc.point, *bc.bca, 2)
+                if all(np.isfinite(bc.bca)) else "n/a",
+            "G": bc.n_clusters, "seed": bc.seed, "note": _boot_divergence_note(bc)})
+    else:
+        rep.note("Containment OR (pooled): bootstrap not computable.")
+
+    for model in sorted(v["model"].unique()):
+        m_model = _containment_matched(df, scope, model=model)
+        if m_model is None:
+            continue
+        seed_key = f"containment_{model}"
+        if seed_key not in CLUSTER_BOOT_SEEDS:
+            rep.note(f"No documented bootstrap seed for model '{model}' — a model this "
+                     "codebase did not have when the seed table above was written. Not "
+                     "bootstrapped rather than run on an undocumented seed.")
+            continue
+        existing_m = mcnemar_block(m_model, "obeyed", f"{model} [both delivered]", alpha)
+        clusters_m = _containment_clusters(m_model, model=model)
+        bc = cluster_bootstrap(clusters_m, _est_containment_or, alpha,
+                               seed=CLUSTER_BOOT_SEEDS[seed_key], label=f"containment {model}")
+        if bc is None:
+            rep.note(f"Containment OR ({model}): bootstrap not computable (too few "
+                     "attack_id clusters or too many degenerate replicates).")
+            continue
+        cont_rows.append({
+            "model": model,
+            "exact McNemar OR [95% CI] (existing, raw b/c point)":
+                existing_m["cond. OR [95% CI exact]"],
+            "bootstrap point (Haldane-consistent)": round(bc.point, 4),
+            "bootstrap percentile [95% CI]": ci_str(bc.point, *bc.percentile, 2),
+            "bootstrap BCa [95% CI]": ci_str(bc.point, *bc.bca, 2)
+                if all(np.isfinite(bc.bca)) else "n/a",
+            "G": bc.n_clusters, "seed": bc.seed, "note": _boot_divergence_note(bc)})
+
+    if cont_rows:
+        rep.table("Containment OR (contained vs concatenated, obeyed|both-delivered) — "
+                  "exact McNemar vs cluster bootstrap on attack_id (model fixed) or "
+                  "(model, attack_id) (pooled)", pd.DataFrame(cont_rows))
+        rep.note(
+            "The bootstrap POINT is exp(Haldane-corrected log(b/c)) — the SAME quantity "
+            "Cochran's Q already consumes for these models elsewhere in this report — not "
+            "the raw b/c the McNemar table prints, which is exactly 0 or +-inf at a zero "
+            "discordant cell (gemma4:26b's b=0) and cannot seed a resampling distribution. "
+            "The two points are close but not identical by construction; both are shown so "
+            "neither reads as a silent substitution for the other.\n"
+            "This is the (model x attack_id) cluster bootstrap the paper's containment "
+            "section is missing: the exact McNemar interval treats the "
+            "attack_id-repeated pairs within a model as independent once the pairing is "
+            "formed, and the pooled row additionally treats all five models as "
+            "independent. Both assumptions are checked, not assumed, here.")
+
+
 # ── RQ2 ──────────────────────────────────────────────────────────────────────
 
 def load_capability(path: Path) -> pd.DataFrame:
@@ -3087,6 +3605,112 @@ def selftest(alpha: float = 0.05) -> int:
         check("no containment figure is emitted when the factor has one level",
               none_made == [], str(none_made))
 
+    # 28. Cluster bootstrap MECHANICS on a hand-built two-arm cluster set: the
+    #     point estimate must match the direct calculation on the full sample,
+    #     both intervals must bracket a well-estimated point, and the seed
+    #     must actually control reproducibility (same seed -> identical CI,
+    #     different seed -> a different draw).
+    rng28 = np.random.default_rng(9001)
+    hand_clusters: dict = {}
+    for i in range(20):
+        hand_clusters[("A", i)] = {"arm": np.zeros(25, dtype=int),
+                                   "y": (rng28.random(25) < 0.60).astype(int)}
+        hand_clusters[("B", i)] = {"arm": np.ones(25, dtype=int),
+                                   "y": (rng28.random(25) < 0.30).astype(int)}
+
+    def _est_rd_hand(parts: list) -> float:
+        arm = np.concatenate([p["arm"] for p in parts])
+        y = np.concatenate([p["y"] for p in parts])
+        a, b = y[arm == 0], y[arm == 1]
+        return float(a.mean() - b.mean()) if a.size and b.size else float("nan")
+
+    direct_point = _est_rd_hand(list(hand_clusters.values()))
+    bc_hand = cluster_bootstrap(hand_clusters, _est_rd_hand, alpha, B=1000,
+                                seed=CLUSTER_BOOT_SEED + 900, label="hand")
+    check("cluster_bootstrap point estimate matches direct calculation on the "
+          "full (unresampled) cluster set",
+          bc_hand is not None and abs(bc_hand.point - direct_point) < 1e-9,
+          f"boot={bc_hand.point if bc_hand else 'n/a'} direct={direct_point:.4f}")
+    check("cluster_bootstrap percentile CI brackets a well-estimated point",
+          bc_hand is not None
+          and bc_hand.percentile[0] < bc_hand.point < bc_hand.percentile[1],
+          f"{bc_hand.percentile if bc_hand else 'n/a'}")
+    check("cluster_bootstrap BCa CI is finite and brackets the point",
+          bc_hand is not None and all(np.isfinite(bc_hand.bca))
+          and bc_hand.bca[0] < bc_hand.point < bc_hand.bca[1],
+          f"{bc_hand.bca if bc_hand else 'n/a'}")
+    bc_hand2 = cluster_bootstrap(hand_clusters, _est_rd_hand, alpha, B=1000,
+                                 seed=CLUSTER_BOOT_SEED + 900, label="hand")
+    check("same documented seed -> byte-identical bootstrap CI (reproducibility)",
+          bc_hand2 is not None and bc_hand.percentile == bc_hand2.percentile
+          and bc_hand.bca == bc_hand2.bca)
+    bc_hand3 = cluster_bootstrap(hand_clusters, _est_rd_hand, alpha, B=1000,
+                                 seed=CLUSTER_BOOT_SEED + 901, label="hand")
+    check("a DIFFERENT seed draws a different (not accidentally identical) "
+          "bootstrap distribution",
+          bc_hand3 is not None and bc_hand.percentile != bc_hand3.percentile)
+
+    # 29. COVERAGE — the same standard this file already holds Wilson (vs
+    #     statsmodels, check 1), the interaction log-odds (check 22) and the
+    #     power formulas in power.py to: does the interval contain the TRUE
+    #     parameter at approximately the nominal rate, on repeated draws from
+    #     a KNOWN cluster-correlated generating process? Ground truth is a
+    #     risk difference between two arms of beta-binomial clusters (mean p,
+    #     intraclass correlation rho — Var(cluster prob) = rho*p*(1-p) by
+    #     construction, so E[outcome] = p exactly regardless of rho and the
+    #     true RD is known exactly, not approximately). This is a coverage
+    #     check, not a 'does it run' check; APPENDIX_MATH.md M13.3 reports the
+    #     same simulation at several cluster counts, including the study's own
+    #     small-G regime, where coverage is measurably (not catastrophically)
+    #     below nominal — stated, not hidden.
+    def _beta_binom_cluster(rng_: np.random.Generator, p: float, rho: float,
+                            g: int, m: int) -> np.ndarray:
+        if rho <= 1e-9:
+            cp = np.full(g, p)
+        else:
+            a_, b_ = p * (1 - rho) / rho, (1 - p) * (1 - rho) / rho
+            cp = rng_.beta(a_, b_, size=g)
+        return (rng_.random((g, m)) < cp[:, None]).astype(int)
+
+    def _est_rd_cov(parts: list) -> float:
+        arm = np.concatenate([p["arm"] for p in parts])
+        y = np.concatenate([p["y"] for p in parts])
+        a, b = y[arm == 0], y[arm == 1]
+        return float(a.mean() - b.mean()) if a.size and b.size else float("nan")
+
+    P_A, P_B, RHO, G_ARM, M_TRIALS = 0.55, 0.25, 0.15, 12, 15
+    TRUE_RD = P_A - P_B
+    N_SIM, B_COV = 300, 400
+    cov_seed = CLUSTER_BOOT_SEED + 999    # documented coverage-sim master seed
+    master = np.random.default_rng(cov_seed)
+    hit_pct = hit_bca = usable = 0
+    for s in range(N_SIM):
+        ya = _beta_binom_cluster(master, P_A, RHO, G_ARM, M_TRIALS)
+        yb = _beta_binom_cluster(master, P_B, RHO, G_ARM, M_TRIALS)
+        sim_clusters = {}
+        for i in range(G_ARM):
+            sim_clusters[("A", i)] = {"arm": np.zeros(M_TRIALS, dtype=int), "y": ya[i]}
+            sim_clusters[("B", i)] = {"arm": np.ones(M_TRIALS, dtype=int), "y": yb[i]}
+        bc = cluster_bootstrap(sim_clusters, _est_rd_cov, alpha, B=B_COV,
+                               seed=cov_seed + 1 + s, label=f"cov-{s}")
+        if bc is None:
+            continue
+        usable += 1
+        if bc.percentile[0] <= TRUE_RD <= bc.percentile[1]:
+            hit_pct += 1
+        if all(np.isfinite(bc.bca)) and bc.bca[0] <= TRUE_RD <= bc.bca[1]:
+            hit_bca += 1
+    cov_pct = hit_pct / usable if usable else float("nan")
+    cov_bca = hit_bca / usable if usable else float("nan")
+    check(f"cluster-bootstrap PERCENTILE CI achieves close-to-nominal coverage "
+          f"on {usable}/{N_SIM} synthetic cluster-correlated draws "
+          f"(true RD={TRUE_RD:.2f}, rho={RHO}, G={2 * G_ARM}, m={M_TRIALS}/cluster)",
+          usable >= N_SIM * 0.9 and 0.88 <= cov_pct <= 1.0,
+          f"coverage={cov_pct:.3f} (nominal 0.95)")
+    check("...and the BCa CI achieves comparable coverage on the same draws",
+          usable >= N_SIM * 0.9 and 0.85 <= cov_bca <= 1.0,
+          f"coverage={cov_bca:.3f} (nominal 0.95)")
+
     print("-" * 78)
     if fails:
         print(f"SELF-TEST FAILED: {len(fails)} check(s): {fails}")
@@ -3215,6 +3839,7 @@ def analyze(df: pd.DataFrame, load_rep: LoadReport, run_id: str, split: str,
     containment_mcnemar(df, rep, alpha, scope)
     framing_contrasts(df, rep, alpha)
     containment_interaction(df, rep, alpha, scope)
+    cluster_bootstrap_report(df, rep, alpha, scope)
 
     rq2(df, rep, alpha, bench_path)
     return rep

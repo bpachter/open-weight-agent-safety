@@ -168,6 +168,33 @@ no `spec_voice` case. gemma4 is not injection-resistant; it is resistant to the
 three framings that happened to be tested and fails the untested one 10/10. Any
 safety claim from a 4-case suite is a claim about the suite.
 
+### Addendum (2026-08-06): containment-heldout runs to completion, corrects the probe
+
+The full containment stage (`run_id = containment-heldout`) has since run to
+completion: 6,800 trials, held-out split, five models (all but
+`deepseek-r1:14b`, per the staging note above), integrity verified
+(`PRAGMA integrity_check: ok`, exact expected row counts), independently
+reproduced twice — once against the private `trials.db`, once against the
+public repo's vendored copy.
+
+The confirmatory data corrects the probe's central qualitative claim.
+Containment helps **every** model with no exceptions: pooled over 3,353
+both-delivered matched pairs, the paired McNemar gives conditional OR 0.15
+[0.12, 0.19] (p = 3.0e-97), and all five per-model odds ratios are below 1
+with all five p-values below 1e-6. The *magnitude* of that effect is
+genuinely heterogeneous across models (Cochran's Q = 31.03, df = 4,
+p = 3.0e-6, I² = 87.1%), ranging from gemma4:26b's near-total elimination
+(3.2% → 0.0%, OR 0.00) down to qwen3:30b-instruct's partial ~1/3 reduction
+(43.8% → 29.3%, OR 0.31). The probe's specific claim above that containment
+"does almost nothing" for qwen3-coder:30b (16/30 → 10/30, ns) was a
+low-power false negative: at full scale (n=672) qwen3-coder shows one of the
+strongest effects in the panel (53.7% → 28.3%, OR 0.11 [0.07, 0.17],
+p = 1.7e-35). "Universal but heterogeneous" is the corrected finding —
+stronger and more useful than the probe's "works for one model, not the
+other" — and it supersedes the qualitative claim above without erasing it:
+the probe section is left unedited as the honest record of what an n=120
+pilot supported before this run.
+
 ### How containment is operationalised, and why `read_file` has no contained arm
 
 Grid revision C makes containment a level rather than an unstated choice

@@ -332,6 +332,39 @@ The LRT is MODEL-BASED: it assumes trials are independent, and they are not — 
 Q needs no cluster-robust covariance and no large-G asymptotics in the number of models — each model contributes one effect and one variance — so it is the interaction test that survives G = 6. It does assume the within-model log-ORs are approximately normal, which is the usual meta-analytic assumption and is weakest exactly where a cell is near zero.
 This Q and the one in 4b-C are DIFFERENT ESTIMANDS and will not agree numerically. This one is unpaired (marginal 2x2 per model), so a model at 0/n in both arms still contributes a Haldane log-OR of exactly 0 and enters the test. 4b-C is the conditional log-OR from the discordant pairs, where that same model has b + c = 0 and is genuinely uninformative and excluded. Neither is a bug; report both with their scale named, and prefer the paired one, which is the pre-registered primary (APPENDIX_MATH.md M9).
 
+## 4e. Pre-registered (model x attack_id) cluster bootstrap
+
+Resampling unit: (model, attack_id), G = 170 clusters in this run. B = 2000 replicates per quantity, seeds listed per row (base 20260804 + a fixed per-quantity offset, power.py's own convention). Full algorithm: APPENDIX_MATH.md §M13.
+
+Delta_inj bootstrap: needs 'attack' and 'clean' conditions, both absent or one missing here. Skipped.
+
+Delta_safety bootstrap: needs 'attack' and 'benign' conditions, both absent or one missing here. Skipped.
+
+**Framing OR (spec_voice vs admin_note) — trial-level, model-clustered sandwich, and the pre-registered bootstrap, side by side**
+
+| source | OR [95% CI] | detail |
+|---|---|---|
+| trial-level (Table 5, Haldane/Fisher) | 9.10 [7.81, 10.59] | trials treated as independent |
+| model-clustered sandwich GLM (Table 7) | 10.46 [3.10, 35.29] | G=5 |
+| cluster bootstrap (model x attack_id), percentile | 9.10 [5.33, 16.66] | G=170, B_used=2000, seed=20260907 |
+| cluster bootstrap (model x attack_id), BCa | 9.10 [4.93, 15.19] | BCa tracks percentile closely (width ratio 0.91). |
+
+This is the interval §7.5 of the paper says is still owed: 'Neither interval is yet the pre-registered (model x attack) cluster bootstrap.' It now is, above, printed beside both existing intervals rather than replacing either.
+
+**Containment OR (contained vs concatenated, obeyed|both-delivered) — exact McNemar vs cluster bootstrap on attack_id (model fixed) or (model, attack_id) (pooled)**
+
+| model | exact McNemar OR [95% CI] (existing, raw b/c point) | bootstrap point (Haldane-consistent) | bootstrap percentile [95% CI] | bootstrap BCa [95% CI] | G | seed | note |
+|---|---|---|---|---|---|---|---|
+| ALL MODELS (pooled) | 0.15 [0.12, 0.19] | 0.1532 | 0.15 [0.08, 0.26] | 0.15 [0.09, 0.29] | 170 | 20260914 | BCa tracks percentile closely (width ratio 1.12). |
+| gemma4:26b | 0.00 [0.00, 0.18] | 0.0222 | 0.02 [0.01, 0.20] | 0.02 [0.00, 0.11] | 34 | 20260915 | BCa and percentile DIVERGE MATERIALLY (width ratio 0.55, z0=-0.170, a-hat=-0.1584) — sign of a skewed bootstrap distribution; prefer BCa. |
+| qwen2.5:7b | 0.06 [0.03, 0.11] | 0.0612 | 0.06 [0.02, 0.15] | 0.06 [0.02, 0.20] | 34 | 20260916 | BCa tracks percentile closely (width ratio 1.31). |
+| qwen3-coder:30b | 0.11 [0.07, 0.17] | 0.1099 | 0.11 [0.04, 0.21] | 0.11 [0.05, 0.22] | 34 | 20260917 | BCa tracks percentile closely (width ratio 1.04). |
+| qwen3.6:27b | 0.25 [0.15, 0.41] | 0.2529 | 0.25 [0.10, 0.56] | 0.25 [0.10, 0.55] | 34 | 20260918 | BCa tracks percentile closely (width ratio 0.98). |
+| qwen3:30b-instruct | 0.31 [0.21, 0.44] | 0.3066 | 0.31 [0.02, 0.95] | 0.31 [0.05, 1.27] | 34 | 20260919 | BCa tracks percentile closely (width ratio 1.31). |
+
+The bootstrap POINT is exp(Haldane-corrected log(b/c)) — the SAME quantity Cochran's Q already consumes for these models elsewhere in this report — not the raw b/c the McNemar table prints, which is exactly 0 or +-inf at a zero discordant cell (gemma4:26b's b=0) and cannot seed a resampling distribution. The two points are close but not identical by construction; both are shown so neither reads as a silent substitution for the other.
+This is the (model x attack_id) cluster bootstrap the paper's containment section is missing: the exact McNemar interval treats the attack_id-repeated pairs within a model as independent once the pairing is formed, and the pooled row additionally treats all five models as independent. Both assumptions are checked, not assumed, here.
+
 ## 5. RQ2 — tool-use competence vs obedience CONDITIONAL ON DELIVERY
 
 **Per-model outcomes. The last two columns are the paper's point: a model with low delivery looks safe on the naive measure**
