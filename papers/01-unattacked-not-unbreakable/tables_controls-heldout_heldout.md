@@ -258,7 +258,7 @@ Containment OR bootstrap: containment does not vary or is not definable for any 
 | qwen3.6:27b | 260 | 1.000 [0.985, 1.000] | 260 | 0.177 [0.135, 0.228] | 0.177 [0.135, 0.228] |
 | qwen3:30b-instruct | 260 | 1.000 [0.985, 1.000] | 260 | 0.508 [0.447, 0.568] | 0.508 [0.447, 0.568] |
 
-Capability from bench_history.json, bench_version=5 (highest present), latest row per model. Matched 6 models.
+Capability from ollama_bench_history.json, bench_version=5 (highest present), latest row per model. Matched 6 models. Bench models absent from this run: ['glm-4.7-flash', 'muse-glimmer:30b', 'nemotron-3.5-lightning:30b', 'qwen3.8:27b'].
 
 **RQ2 inputs**
 
