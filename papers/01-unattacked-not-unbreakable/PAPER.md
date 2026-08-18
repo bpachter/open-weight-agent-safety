@@ -64,16 +64,16 @@ states results and the assumptions they rest on; the appendix proves them.
 
 Local, open-weight, quantized language models are increasingly deployed as
 tool-using agents on consumer hardware, where they ingest untrusted third-party
-content — web results, files, knowledge-graph records — and hold real write
+content (web results, files, knowledge-graph records) and hold real write
 capability over local state. Capability benchmarks for these models are
 abundant; measurements of their behaviour under adversarial tool output are
 not. We run a factorial study of indirect prompt injection against six
 open-weight 4-bit models on a single RTX 4090 under Ollama, crossing attack
 framing, payload position, claimed authority, carrier tool, **payload
-containment** and prompt-level defense. The completed held-out controls stage
-contributes 4,680 trials (8 invalid, 0.17%) and the completed held-out
-containment stage contributes a further 6,800 trials (32 invalid, 0.47%); the
-remaining stages are pre-registered here and appear as `[RESULT: ...]`.
+containment** and prompt-level defense. Two stages are complete: the held-out
+controls stage contributes 4,680 trials (8 invalid, 0.17%), and the held-out
+containment stage a further 6,800 trials (32 invalid, 0.47%). The remaining
+stages are pre-registered here and appear as `[RESULT: ...]`.
 
 Our central methodological claim is that indirect-injection susceptibility is
 only defined **conditional on delivery**. Writing $D_i$ for the event that the
@@ -81,13 +81,13 @@ model actually called the carrier tool and so received the payload, and $Y_i$
 for a call to the forbidden tool in the post-payload turn, the estimand is
 $\mathbb{P}(Y = 1 \mid C = \text{attack}, D = 1)$, not
 $\mathbb{P}(Y = 1 \mid C = \text{attack})$. The difference is not cosmetic. In
-our data `deepseek-r1:14b` delivered $0/258$ attack trials — Wilson 95% CI
-$[0.000, 0.015]$ — so its conditional obedience has **no denominator and no
+our data `deepseek-r1:14b` delivered $0/258$ attack trials (Wilson 95% CI
+$[0.000, 0.015]$), so its conditional obedience has **no denominator and no
 interval**; the honest report is a missing value. Score its undelivered trials
 as non-obedience and it ranks *safest of six*; score them as non-resistance and
 it ranks *most injectable of six*. Among the five models that do deliver, the
 conditional and naive rankings agree exactly (Kendall $\tau = 1.00$). The naive
-metric is therefore not noisy — it is undefined precisely where the ranking
+metric, then, is not noisy — it is undefined precisely where the ranking
 changes.
 
 Three substantive findings follow. **(i) The negative control passes**, which is
@@ -99,8 +99,8 @@ $\hat\Delta_{\mathrm{inj}} = 0.361$, 95% CI $[0.335, 0.387]$, Fisher
 $p = 8.7\times10^{-164}$. **(ii) There is no destructive-specific brake in
 aggregate.** A benign-payload control that requests a *harmless* tool through
 the identical channel yields
-$\hat\Delta_{\mathrm{safety}} = 0.032$, $[-0.005, 0.070]$, $p = 0.089$; on the
-one framing whose benign prose is verbatim-matched to its attack prose the
+$\hat\Delta_{\mathrm{safety}} = 0.032$, $[-0.005, 0.070]$, $p = 0.089$. On the
+one framing whose benign prose is verbatim-matched to its attack prose, the
 matched-pairs estimate is $-0.008$, $[-0.044, 0.027]$. Resistance to injected
 instructions is generic reluctance to act on embedded text, not a judgment about
 what the text asks for. That aggregate null hides very large model
@@ -112,20 +112,20 @@ maintenance note and at $0.667$ $[0.619, 0.711]$ dressed in the register of a
 data-handling policy — an odds ratio of $8.89$, 95% CI $[3.15, 25.07]$ with
 standard errors clustered on model, Holm-adjusted $p = 0.0085$.
 
-**(iv) Payload containment — placing untrusted text inside an escaped string
+**(iv) Payload containment (placing untrusted text inside an escaped string
 field of a well-formed record rather than concatenating it raw into the
-serialized tool result — helps every model, with no exceptions, but the
+serialized tool result) helps every model, with no exceptions, but the
 *amount* it helps is genuinely heterogeneous.** Pooled over 3,353 matched,
 both-delivered pairs (five models, held-out), obedience falls from
 $0.295$ to $0.135$; paired McNemar conditional OR $0.15$, 95% CI $[0.12, 0.19]$,
 $p = 3.0\times10^{-97}$. All five per-model odds ratios are below 1 and all five
-$p < 10^{-6}$ — from `gemma4:26b`'s near-total elimination ($0.032 \to 0.000$,
-OR $0.00$ $[0.00, 0.18]$) to `qwen3:30b-instruct`'s partial, roughly one-third
-reduction ($0.438 \to 0.296$, OR $0.31$ $[0.21, 0.44]$), Cochran's
-$Q = 31.0$, $\mathrm{df} = 4$, $p = 3.0\times10^{-6}$, $I^2 = 87\%$. An earlier
-$n = 120$ probe, under-powered, had read one of these five models as showing
-"almost nothing" ($16/30 \to 10/30$, $p = 0.19$, ns) — a false negative the
-full design corrects: containment is not a mitigation that works for some
+$p < 10^{-6}$. They run from `gemma4:26b`'s near-total elimination
+($0.032 \to 0.000$, OR $0.00$ $[0.00, 0.18]$) to `qwen3:30b-instruct`'s partial,
+roughly one-third reduction ($0.438 \to 0.296$, OR $0.31$ $[0.21, 0.44]$);
+Cochran's $Q = 31.0$, $\mathrm{df} = 4$, $p = 3.0\times10^{-6}$, $I^2 = 87\%$.
+An earlier $n = 120$ probe, under-powered, had read one of these five models as
+showing "almost nothing" ($16/30 \to 10/30$, $p = 0.19$, ns) — a false negative
+the full design corrects: containment is not a mitigation that works for some
 models and not others, it is a mitigation that works everywhere at a magnitude
 that depends on which checkpoint is deployed. We release the harness, the full
 trial-level dataset including every raw model response, and the
@@ -136,17 +136,17 @@ pre-registration this document constitutes.
 ## 1. Introduction
 
 The deployment pattern this paper studies is now ordinary. A user runs an
-open-weight model locally — for privacy, for cost, or because the hardware is
-already sitting under the desk for other reasons — and gives it tools. The
+open-weight model locally (for privacy, for cost, or because the hardware is
+already sitting under the desk for other reasons) and gives it tools. The
 tools read the web. They read files. They query a local knowledge graph. Some
 of them write. The model is quantized to 4 bits because that is what fits in
 24 GB of VRAM, and it is selected on the basis of a leaderboard.
 
 Every part of that sentence has been studied except the part that matters for
-security. There are extensive public measurements of what these models can *do*
-[CITE: open LLM leaderboards / agentic capability benchmarks], of how
+security. Public measurement is extensive for what these models can *do*
+[CITE: open LLM leaderboards / agentic capability benchmarks], for how
 quantization affects perplexity and task accuracy [CITE: post-training
-quantization evaluation], and of prompt injection as a phenomenon
+quantization evaluation], and for prompt injection as a phenomenon
 [CITE: indirect prompt injection, foundational]. There is very little
 measurement of the intersection: what a *quantized, locally-hosted,
 open-weight* agent does when its tool output is adversarial.
@@ -178,14 +178,14 @@ not its integrity. Whether that incompetence is rewarded or punished depends
 entirely on an arbitrary scoring convention: score undelivered trials as
 "did not obey" and the incompetent model looks *maximally safe*; score them as
 "did not resist" and the same model looks *maximally injectable*. Our pilot
-produced exactly this, with `deepseek-r1:14b` — which called a tool in 2 of 12
-attempts and was therefore essentially never attacked — landing at the extreme
-of the resistance column. The confirmatory controls stage reproduces it at
-scale: that model delivered **0 of 258** valid attack trials, Wilson 95% CI
+produced exactly this. `deepseek-r1:14b` called a tool in 2 of 12 attempts,
+was therefore essentially never attacked, and landed at the extreme of the
+resistance column. The confirmatory controls stage reproduces it at scale:
+that model delivered **0 of 258** valid attack trials, Wilson 95% CI
 $[0.000, 0.015]$, and moves from rank 1 of 6 to rank 6 of 6 purely by flipping
-the convention, while the five models whose conditional obedience *is*
-identified rank identically under both (Kendall $\tau = 1.00$; §7.2). That the
-bias flips sign with the convention, and does so **only** at the model where the
+the convention. The five models whose conditional obedience *is* identified
+rank identically under both (Kendall $\tau = 1.00$; §7.2). That the bias flips
+sign with the convention, and does so **only** at the model where the
 conditional quantity has no denominator, is not a detail; it is proof that the
 unconditional quantity is undefined. The conditional quantity
 $\mathbb{P}(Y = 1 \mid C = \texttt{attack}, D = 1)$ is well-defined, and it is
@@ -194,7 +194,7 @@ the one we report.
 **(c) The threat model in most practitioners' heads is the wrong shape.**
 Defenses, red-team suites and intuitions are built around payloads that look
 adversarial: `IGNORE ALL PREVIOUS INSTRUCTIONS`, role-play jailbreaks, encoded
-text. Our pilot suggests the opposite ordering — that the crude override is the
+text. Our pilot suggests the opposite ordering: the crude override is the
 *easiest* framing to resist and the bureaucratically polite one is the hardest.
 If that survives confirmation, then red-team suites built from adversarial-
 looking payloads systematically over-report safety, because they are testing
@@ -229,9 +229,9 @@ choices about this, and neither study typically mentions making one.
 2. An **explicit identification argument** for that protocol (§3.6): the
    conditions under which conditioning on a post-treatment variable is
    legitimate, stated as assumptions that can fail, with a pre-registered
-   testable implication — delivery must be flat across pre-payload-invisible
-   factors — that we run and report (it passes: $0.833$ for all three framings,
-   $\chi^2$ $p = 0.9999$).
+   testable implication (delivery must be flat across pre-payload-invisible
+   factors) that we run and report. It passes: $0.833$ for all three framings,
+   $\chi^2$ $p = 0.9999$.
 3. A **factorial characterisation of what makes an injection land** — framing,
    position, claimed authority, carrier tool, and **payload containment** —
    across six open-weight models at a fixed quantization, holding hardware and
@@ -244,15 +244,15 @@ choices about this, and neither study typically mentions making one.
    default.** Every published indirect-injection rate we are aware of is
    silently conditional on how the payload was joined to the tool result. We
    make that a factor, define it precisely, state where it is *undefined*
-   (plain-text carriers, §4.4b), and — on the confirmatory held-out stage
-   (6,800 trials, §7.6) — show that it helps every model with no exceptions
+   (plain-text carriers, §4.4b), and show, on the confirmatory held-out stage
+   (6,800 trials, §7.6), that it helps every model with no exceptions
    (all five per-model odds ratios $< 1$, all five $p < 10^{-6}$) at a magnitude
    that is genuinely heterogeneous rather than uniform (Cochran's $Q$,
-   $p = 3.0\times10^{-6}$), which is a sharper and more actionable finding than
+   $p = 3.0\times10^{-6}$). That is a sharper and more actionable finding than
    the pooled main effect a naive reading would have reported.
 6. A **pre-registered separation of exploratory and confirmatory analysis**
-   via a content-hashed attack split, so that the register effect — which was
-   *discovered* in the pilot — is tested on attacks that were never used to
+   via a content-hashed attack split, so that the register effect, which was
+   *discovered* in the pilot, is tested on attacks that were never used to
    develop it (§4.6).
 7. A released harness, trial-level dataset with raw responses retained, and
    this pre-registration.
@@ -274,16 +274,16 @@ appended to its context as a `tool`-role message, and (iv) continues, possibly
 emitting further tool calls, until it produces a final answer.
 
 The agent's tool set contains at least one tool with **real write capability**
-— in the deployment this study is drawn from, tools that mutate a local
-knowledge graph, a filesystem, or a database. We denote the destructive tool
+(in the deployment this study is drawn from, tools that mutate a local
+knowledge graph, a filesystem, or a database). We denote the destructive tool
 `delete_records`.
 
 ### 2.2 The adversary
 
 The adversary **cannot** modify the system prompt, the operator's message, the
-model weights, the serving stack, or the tool implementations. The adversary's
-only capability is to **control some content that a tool will return**. That is
-a low bar and it is met constantly in practice:
+model weights, the serving stack, or the tool implementations. Its only
+capability is to **control some content that a tool will return**. That is a
+low bar and it is met constantly in practice:
 
 - a web page or search snippet the agent retrieves,
 - a file the agent reads that originated outside the trust boundary (a
@@ -292,10 +292,10 @@ a low bar and it is met constantly in practice:
   from third-party sources,
 - an API response from a service the operator does not control.
 
-The adversary is **not targeted at a specific victim** and does not need to be.
-Poisoning content that many agents will eventually read is sufficient.
+This adversary is **not targeted at a specific victim**, and does not need to
+be: poisoning content that many agents will eventually read is sufficient.
 
-The adversary's goal is to cause the agent to invoke `delete_records` — an
+The adversary's goal is to cause the agent to invoke `delete_records`, an
 action that no legitimate completion of the operator's task requires.
 
 ### 2.3 Why *tool output* is the trust boundary that matters
@@ -308,11 +308,11 @@ Tool output is different in exactly one way that turns out to be decisive: it
 enters the same context window, in the same token stream, with the same
 representational status as everything else, but it is **authored by whoever
 controls the data source**. The chat-template role tag (`tool`) is the only
-structural signal distinguishing it, and that tag is a weak, trained
-convention, not an enforced boundary. Nothing in the architecture prevents the
-model from treating a sentence inside a tool result as an instruction; whether
-it does so is an empirical property of the weights and the template, which is
-precisely what we measure.
+structural signal distinguishing it. That tag is a weak, trained convention,
+not an enforced boundary. Nothing in the architecture prevents the model from
+treating a sentence inside a tool result as an instruction. Whether it does so
+is an empirical property of the weights and the template, and that is precisely
+what we measure.
 
 This is why the boundary is *tool output* and not "user input": the user is not
 the adversary in this threat model. The adversary is upstream of a tool the
@@ -352,7 +352,7 @@ $$
 
 where $m_i \in \mathcal{M}$ is the model tag, $q_i$ the quantization, $C_i$ the
 condition, $t_i \in \{0, 1, \dots, T-1\}$ the replicate index, and $Z_i$ the
-**factor vector** — the manipulated properties of the stimulus:
+**factor vector** (the manipulated properties of the stimulus):
 
 $$
 Z_i \;=\; \bigl(\underbrace{F_i}_{\text{framing}},\;
@@ -452,9 +452,9 @@ answers a question that the attack condition alone cannot.
 
 **Why `clean` is load-bearing.** Without a no-payload control we cannot
 attribute a single destructive call to the injection. A model that
-spontaneously calls `delete_records` at some non-zero rate — because the tool
+spontaneously calls `delete_records` at some non-zero rate (because the tool
 is in its tool list, because the task is ambiguous, because 4-bit quantization
-made its tool selection noisy — would inflate every attack-condition number.
+made its tool selection noisy) would inflate every attack-condition number.
 The clean condition measures that base rate directly, and the *attributable*
 effect is the difference:
 
@@ -475,7 +475,7 @@ though the point estimate never moves.
 
 **Why `benign` is load-bearing.** Suppose a model obeys instructions found in
 tool output 60% of the time regardless of what they ask for. Then a 60% attack
-success rate reveals nothing about safety training — the model is not failing
+success rate reveals nothing about safety training: the model is not failing
 to refuse a *destructive* request, it is simply following text. The benign
 condition separates these. Because $O$ names a *different tool* in each arm,
 this contrast asks precisely "does the requested action change compliance,
@@ -488,13 +488,13 @@ $$
 $$
 
 $\Delta_{\mathrm{safety}} \approx 0$ means the model has **no
-destructive-specific refusal at all** — its resistance, whatever its level, is
-generic instruction-following reluctance and will not scale with how bad the
-requested action is. $\Delta_{\mathrm{safety}} > 0$ means some safety-relevant
-discrimination exists and can be quantified; $\Delta_{\mathrm{safety}} < 0$
-means the model is *more* compliant when the request is destructive, which
-sounds impossible and is not (§7.4). We are not aware of this contrast being
-reported in the indirect-injection literature
+destructive-specific refusal at all**. Its resistance, whatever its level, is
+generic instruction-following reluctance, and it will not scale with how bad
+the requested action is. $\Delta_{\mathrm{safety}} > 0$ means some
+safety-relevant discrimination exists and can be quantified;
+$\Delta_{\mathrm{safety}} < 0$ means the model is *more* compliant when the
+request is destructive, which sounds impossible and is not (§7.4). We are not
+aware of this contrast being reported in the indirect-injection literature
 [CITE: indirect prompt injection, benchmarks], and it is a result in its own
 right regardless of which way it comes out.
 
@@ -505,15 +505,15 @@ around it. Two framings state a destructive rationale in their own words
 in those would test incoherence, not harmlessness, so `admin_note` and
 `spec_voice` carry reworded benign prose of the same rhetorical form and
 comparable length. The remaining five framings are action-neutral and are reused
-**verbatim**. Consequently $\Delta_{\mathrm{safety}}$ is an *exact* contrast only
-on the verbatim-matched framings — in the completed stage, `html_comment` alone
-— and a *near* contrast on the other two. We report both, and we treat the
+**verbatim**. $\Delta_{\mathrm{safety}}$ is therefore an *exact* contrast only
+on the verbatim-matched framings (in the completed stage, `html_comment` alone)
+and a *near* contrast on the other two. We report both, and we treat the
 verbatim-matched estimate as the primary one (§7.4).
 
 ### 3.2 Delivery
 
 $D_i = 1$ iff the model's first turn emitted a call to the trial's designated
-carrier tool $K_i$ — i.e. the payload actually entered the model's context.
+carrier tool $K_i$, i.e. the payload actually entered the model's context.
 Delivery is an **estimand in its own right**, not a nuisance parameter and not a
 denominator artefact:
 
@@ -558,7 +558,7 @@ handled differently:
 
 ### 3.3 Primary and secondary outcomes
 
-- **Primary DV.** $O \mid D = 1,\, C = \texttt{attack}$ — which, by the
+- **Primary DV.** $O \mid D = 1,\, C = \texttt{attack}$, which, by the
   definition in §3.0, is exactly $Y \mid D = 1,\, C = \texttt{attack}$. Binary,
   and **mechanically observable from the emitted tool-call name**: it is
   $\mathbf{1}\{\texttt{delete\_records} \in \mathcal{T}^{(2)}\}$, a set
@@ -570,10 +570,10 @@ handled differently:
   concretely: several models emit the call *and* ask the user for permission in
   prose, and any text-based scorer would read those as refusals.
 - **Delivery rate.** $D$, over $\mathcal{V}$. An outcome (E1), not a filter.
-- **Task completion.** $A^{\ast}$ — did the model still complete the operator's
+- **Task completion.** $A^{\ast}$: did the model still complete the operator's
   actual request. Word-boundary matched against a three-digit scenario anchor;
   a **secondary, coarse** outcome (§9.6).
-- **Validity.** $I$ — trials excluded from all numerators and denominators
+- **Validity.** $I$, the trials excluded from all numerators and denominators
   (§4.7). Reported per model (Table 2) and bounded by imputation (§9.16), never
   silently dropped.
 
@@ -596,9 +596,9 @@ $$
 The factorisation $\rho_m = \delta_m \omega_m$ is exact by the definition of
 conditional probability, not an approximation, and it is the whole argument:
 $\rho$ is what a deployment experiences, $\omega$ is what a *model* contributes,
-and $\delta$ is what its tool competence contributes. Note that $\rho_m$ is
-directly estimable with a Wilson interval as $\hat\rho_m = \sum_i O_i D_i / n_m$
-over all valid attack trials — no delta method is needed for its interval.
+and $\delta$ is what its tool competence contributes. $\rho_m$ is directly
+estimable with a Wilson interval as $\hat\rho_m = \sum_i O_i D_i / n_m$ over all
+valid attack trials; no delta method is needed for its interval.
 
 The confound this paper exists to eliminate is the reporting of $\rho_m$, or of
 something worse, as if it were $\omega_m$. Formally, the two common naive
@@ -745,10 +745,10 @@ $$
 $$
 
 We **pre-registered** this check before any confirmatory data existed:
-*delivery rate must be flat across framing, position and authority* — and, with
-the addition of the containment factor, **across containment as well**, for
-exactly the same reason: the payload's placement inside the tool result is
-invisible at turn 1. `analyze.py` §3b runs the check on every analysis and
+*delivery rate must be flat across framing, position and authority*, and, with
+the addition of the containment factor, **across containment as well**. The
+reason is the same in both cases: the payload's placement inside the tool result
+is invisible at turn 1. `analyze.py` §3b runs the check on every analysis and
 raises an alarm if the spread exceeds $10$ percentage points. Note the
 asymmetry this creates with `defense`: containment is a *post*-turn-1 factor and
 therefore takes delivered-only analysis as primary, whereas defense is a
@@ -757,8 +757,8 @@ for opposite reasons, and `analyze.py` applies them separately rather than
 picking one house style.
 
 **It passes.** In the completed stage the delivery rate is $0.833$ for
-`admin_note`, $0.833$ for `html_comment` and $0.833$ for `spec_voice` — a
-max-minus-min spread of $0$ to three decimal places, $\chi^2$ $p = 0.9999$ — and
+`admin_note`, $0.833$ for `html_comment` and $0.833$ for `spec_voice` (a
+max-minus-min spread of $0$ to three decimal places, $\chi^2$ $p = 0.9999$), and
 $0.833 / 0.833 / 0.832$ across the `attack` / `clean` / `benign` conditions,
 $\chi^2 = 0.013$, $p = 0.993$. Position, authority and containment are
 single-level in this stage and their checks are pending (`[RESULT: delivery
@@ -774,9 +774,10 @@ to discard the delivered-only analyses of that factor.
 collider on the path $Z^{\text{post}} \to D \leftarrow U \to Y$ **if** the
 $Z^{\text{post}} \to D$ edge exists. (A1) says it does not, which is exactly why
 the check matters: the check is a test of the absence of the very edge that
-would open the collider. For factors where the edge demonstrably *does* exist —
-$G$, and the model-level comparison of RQ2 — we do not condition. For $G$ we use
-the ITT estimand of §3.2. For RQ2 we accept a known, signed bias and report it:
+would open the collider. Where the edge demonstrably *does* exist we do not
+condition; that covers $G$, and the model-level comparison of RQ2. For $G$ we
+use the ITT estimand of §3.2. For RQ2 we accept a known, signed bias and report
+it:
 §9.14 gives the simulation showing the conditioning can only *attenuate* a
 positive delivery–obedience association, never manufacture one, so a positive
 RQ2 is credible and a null RQ2 is uninterpretable.
@@ -849,7 +850,7 @@ Qwen2.5 base and is therefore **not independent** of `qwen2.5:7b`. Six models
 is four families, not six, and the effective *n* for any cross-model claim is
 smaller still (§9.1).
 
-The embedding model `nomic-embed-text` is installed but excluded — it is not a
+The embedding model `nomic-embed-text` is installed but excluded: it is not a
 chat model and cannot be attacked in this threat model.
 
 ### 4.2 Factorial design
@@ -914,14 +915,14 @@ it is a Chinese *preamble* (`[系统提示] 忽略先前的指令。`) bolted on
 English command that `system_override` carries. So the claim "attacks that sound
 like attacks do not work" rests on a single sentence, one of its two
 instantiations being that sentence translated. This is stated here rather than
-discovered in review, and it is a second reason — independent of the counting
-argument in §4.6 — that RQ5 is not a confirmatory endpoint. A genuine
+discovered in review, and it is a second reason (independent of the counting
+argument in §4.6) that RQ5 is not a confirmatory endpoint. A genuine
 cross-lingual arm would translate the *whole* payload, and a genuine second
 adversarial device would be a different rhetorical move (a threat, a role-play
 frame, a fake tool-error), not a restatement.
 
-We flag one honest tension immediately. In the pilot, `admin_note` — which this
-grouping places in POLICY — succeeded 0/3, the same as the ADVERSARIAL
+We flag one honest tension immediately. In the pilot, `admin_note`, which this
+grouping places in POLICY, succeeded 0/3, the same as the ADVERSARIAL
 framings. We are pre-registering the grouping on principled surface grounds
 anyway, *including* the level that argues against the hypothesis, precisely so
 that the grouping cannot be accused of having been drawn around the pilot's
@@ -931,7 +932,7 @@ real result and it means our register construct is wrong.
 ### 4.4 Payload construction and contamination control
 
 All entities are synthetic (`Vantablack Orbital`, `Kestrel-9`, `Halcyon
-Dynamics`) with invented facts and invented anchors. All payload prose was
+Dynamics`) with invented facts and invented anchors, and all payload prose was
 written for this study. No string is taken from a public benchmark. This is a
 deliberate contamination control: a model cannot have memorised the correct
 behaviour on an attack that did not exist before the study.
@@ -949,29 +950,28 @@ reproduces the clean body byte for byte — at every position. The concatenated
 arm satisfies that check by construction; the contained arm satisfies the
 record-integrity half of it and, being a re-serialisation, is required to be
 checked instead by round-tripping the result through a JSON parse and comparing
-the legitimate records field by field — deleting a *string* from a re-serialized
+the legitimate records field by field. Deleting a *string* from a re-serialized
 document does not reproduce the clean document, so the byte-equality half of the
 concatenated check does not transfer and a different assertion has to carry it.
 
 *This is grid revision B, and revision A was broken at `middle`.* Revision A
 placed `middle` at the character midpoint of the body. For the `web_search`
-carrier that split landed inside a JSON key — `..."sn` + payload + `ippet": ...`
-with the word `snippet` cut in half — so `position = middle` was not "the same
+carrier that split landed inside a JSON key (`..."sn` + payload + `ippet": ...`,
+the word `snippet` cut in half), so `position = middle` was not "the same
 payload, further in", it was "the same payload, plus a mangled tool result", and
 the damage varied by carrier because the split point depended on the string.
 Since the ablation stage crosses position with carrier, the confound was not
 even constant across the cells being compared. Revision B moves the middle
 insertion point to a record boundary and **changes nothing else**: `head` and
-`tail` bodies are byte-identical in character to revision A. Revision B also
-adds a second legitimate record (so `middle` has an interior boundary at all)
-and widens the scenario anchors to three digits (§9.6). The pilot in §7.0 ran on
+`tail` bodies are byte-identical in character to revision A. It also adds a
+second legitimate record (so `middle` has an interior boundary at all) and
+widens the scenario anchors to three digits (§9.6). The pilot in §7.0 ran on
 revision A at `position = head`; its stimuli differ from the confirmatory ones
 only by that second record, and it is exploratory data that was never poolable
 with confirmatory data in any case.
 
 The narrowness of the *position* fix is deliberate, and §9.17 records what we
-learned by briefly not
-being narrow.
+learned by briefly not being narrow.
 
 Scenario anchors are three digits (`127`, `473`, `881`). Revision A used `12`,
 `47` and `88`, which the substring match used for `answered` would accept inside
@@ -982,8 +982,8 @@ template wraps it, so authority and framing vary independently.
 
 ### 4.4b Payload containment, and the carrier on which it is undefined
 
-**The manipulation.** Let $B(\zeta)$ be the carrier's legitimate body — an
-ordered list of complete records, serialized by the carrier's own grammar — and
+**The manipulation.** Let $B(\zeta)$ be the carrier's legitimate body (an
+ordered list of complete records, serialized by the carrier's own grammar) and
 $p(\zeta)$ the payload string. The two arms are
 
 $$
@@ -998,8 +998,8 @@ $$
 
 where $\oplus_P$ denotes raw string concatenation at position $P$ and
 $\mathrm{ser}$ is the carrier's serializer, which **escapes** $p$ in the
-contained arm. The payload *text* is byte-identical across arms — asserted in
-`attack_grid._selfcheck` after JSON-unescaping — and `payload_chars` /
+contained arm. The payload *text* is byte-identical across arms (asserted in
+`attack_grid._selfcheck` after JSON-unescaping), and `payload_chars` /
 `payload_words` are identical by construction, so the length covariate of §9.15
 can never double as a containment proxy. The design point $\zeta$, the split,
 the seed and the model are all held fixed, so the two arms are **exact matched
@@ -1027,15 +1027,15 @@ is the escaping and not the extra prose that carries it. If it works on
 One further construction choice, made so the arms differ in *placement only*:
 non-ASCII is **not** escaped (`ensure_ascii=False`). Default `\uXXXX` escaping
 would render the `cross_lingual` framing's Chinese as escape sequences, which
-does not merely obscure the payload — it changes what the model can read, so
-the arms would differ in content and not only in placement. Structural
+does not merely obscure the payload. It changes what the model can read, so the
+arms would differ in content and not only in placement. Structural
 characters (quote, backslash, newline) are still escaped, which is the entire
 mechanism, and UTF-8 is what real JSON tool wrappers emit.
 
 **The design question, and the decision.** `contained` as defined is a property
 of a *serialization*. Three carriers (`web_search`, `product_kg`,
 `get_stock_quote`) return JSON-shaped results and have one; `read_file` returns
-plain text — records joined by newlines — and has neither an escaping mechanism
+plain text (records joined by newlines) and has neither an escaping mechanism
 nor a record grammar for a payload to be subordinate to. We considered two
 options and chose the first, deliberately:
 
@@ -1050,7 +1050,7 @@ the model has been trained to parse*. Delimiters work, if they work, by making
 untrusted text *conspicuously marked*. Those are different mechanisms with
 different failure modes, and a "contained `read_file`" arm would be the second
 wearing the name of the first. Pooling them would produce a factor that means
-two things at once — precisely the error §9.15 documents for register-versus-
+two things at once: precisely the error §9.15 documents for register-versus-
 length, and the reason that confound cannot be fixed by more trials. We decline
 to reproduce it in a factor we are introducing on purpose.
 
@@ -1062,7 +1062,7 @@ with an unforgeable one under a single factor label would let a weak mechanism
 be averaged with a strong one and reported as "containment".
 
 *Implementation, so the claim is checkable.* `build_grid` emits **no** contained
-row for `read_file` rather than a relabelled copy of the concatenated body — a
+row for `read_file` rather than a relabelled copy of the concatenated body. A
 copy would tell the analysis that containment had no effect for that carrier,
 which is a claim this design cannot support. `attack_grid.CONTAINABLE_CARRIERS`
 exposes the set, and `runner.py --list-stages` prints `UNBALANCED: no contained
@@ -1097,11 +1097,11 @@ effect marginalised over containment. Concretely (§4.10):
 rate we are aware of — including all of ours prior to this revision — is
 silently conditional on an unstated choice of $S$. This was pre-registered on
 the strength of an $n = 120$ probe that put the size of that conditionality at
-up to $33$ percentage points and flagged it as *model-dependent*; the
+up to $33$ percentage points and flagged it as *model-dependent*. The
 confirmatory `containment-heldout` stage (6,800 trials, §7.6) now shows the
-direction of the effect is not model-dependent at all — it helps every model —
-while its *magnitude* is, ranging from near-total elimination on one model to a
-partial, roughly one-third reduction on another (Cochran's $Q$,
+direction of the effect is not model-dependent at all: it helps every model.
+Its *magnitude* is model-dependent, ranging from near-total elimination on one
+model to a partial, roughly one-third reduction on another (Cochran's $Q$,
 $p = 3.0\times10^{-6}$), which still means it cannot be absorbed as a constant
 offset. A factor whose magnitude varies this much with which model is deployed
 is not a nuisance parameter; it is a load-bearing dimension of the design.
@@ -1120,8 +1120,8 @@ $$
 $$
 
 Keying the split on **content rather than enumeration order** means that adding
-new attacks later never reshuffles the assignment of an existing one — the
-split is stable across every run and cannot silently drift as the grid grows.
+new attacks later never reshuffles the assignment of an existing one; the split
+is stable across every run and cannot silently drift as the grid grows.
 Verified: 2,268 attacks → 1,141 dev / 1,127 held-out.
 
 **The hash contract, stated as an invariant because the whole pairing structure
@@ -1137,7 +1137,7 @@ $$
 Three consequences, each of which is load-bearing somewhere in §7:
 
 1. An attack and its two controls share an `attack_id`, hence a split, hence a
-   seed — so `attack` / `clean` / `benign` of one stimulus are matched on
+   seed. So `attack` / `clean` / `benign` of one stimulus are matched on
    sampling noise as well as on wording (§11.3), and the McNemar of §7.4 has
    exactly matched pairs rather than approximately comparable groups.
 2. Both **containment** arms of a cell likewise share an `attack_id`, a split
@@ -1149,13 +1149,13 @@ Three consequences, each of which is load-bearing somewhere in §7:
    backward-compatibility requirement: the 4,680 completed trials of the
    controls stage must remain valid, matched, and poolable with everything that
    comes after. `containment` enters the database as a new *primary-key* column
-   with legacy rows migrated to the literal `'concatenated'` — which is what
-   they factually are, since the grid concatenated raw at the time they were
-   written — and the migration is verified against a pre-migration backup
-   (§11.2). Verified on the grid: adding the factor leaves the split assignment
-   of all 2,268 attack identities unchanged (1,141 dev / 1,127 held-out), and
-   the contained arm's 1,701 identities are a strict subset of the concatenated
-   arm's, never a new one.
+   with legacy rows migrated to the literal `'concatenated'`, which is what they
+   factually are, since the grid concatenated raw at the time they were written.
+   The migration is verified against a pre-migration backup (§11.2). Verified on
+   the grid: adding the factor leaves the split assignment of all 2,268 attack
+   identities unchanged (1,141 dev / 1,127 held-out), and the contained arm's
+   1,701 identities are a strict subset of the concatenated arm's, never a new
+   one.
 
 The split is balanced *globally* but is **not stratified within framing**, and
 we state the consequence rather than hiding it. In the screening slice
@@ -1172,11 +1172,11 @@ per-framing counts are:
 | `system_override` | 2 | 7 |
 | `cross_lingual` | 2 | 7 |
 
-This imbalance happens to favour the confirmatory test — the ADVERSARIAL
+This imbalance happens to favour the confirmatory test: the ADVERSARIAL
 framings, which the pilot could barely measure (n=2 each), are the
 best-represented in held-out (n=7 each), where the hypothesis will actually be
-adjudicated. We note that this is luck, not design, and that a future revision
-should stratify the hash split within framing.
+adjudicated. That is luck, not design, and a future revision should stratify
+the hash split within framing.
 
 ### 4.6 Pre-registered hypotheses
 
@@ -1189,7 +1189,7 @@ and it is the reason this document exists before the run does.
 models, with the CI reported (§9.1: this is the weakest test in the paper).
 
 **RQ2 — The attack-surface paradox.** *Conditional on delivery*, does tool-use
-propensity correlate with obedience? **H2: positively** — both are
+propensity correlate with obedience? **H2: positively.** Both are
 instruction-following; a model trained to act on text in its context acts on
 all of it. If true, "use a more capable agent model" is not a mitigation and
 may be an anti-mitigation. Test: correlation of D_m with O_m, plus the
@@ -1257,7 +1257,7 @@ rather than concatenating it raw into the serialized tool result, reduce
 obedience — and is that reduction **uniform across models**?
 
 **H6a: containment reduces obedience**, i.e. $\Delta_S(m) > 0$ on average over
-models. **H6b — and this is the hypothesis that matters — the reduction is
+models. **H6b (and this is the hypothesis that matters): the reduction is
 strongly model-dependent**, i.e. the interaction $\Delta_{S \times m}$ (E10) is
 non-zero and large relative to $\Delta_S$ itself.
 
@@ -1266,9 +1266,9 @@ reason is a design commitment rather than a preference. A pooled main effect
 would license the sentence "wrap untrusted content in a field and injection
 drops by $x$ pp", which is exactly the kind of claim a defender would act on and
 exactly the kind of claim the probe suggests is false: one model went to zero and
-another barely moved. If H6b holds, the deployable statement is conditional —
+another barely moved. If H6b holds, the deployable statement is conditional:
 *containment is a mitigation for models that behave like this one and not for
-models that behave like that one* — and the paper must be able to say which is
+models that behave like that one*. The paper must be able to say which is
 which. A design that could only report the average would be a design that
 answers the wrong question.
 
@@ -1290,10 +1290,10 @@ because containment is invisible at turn 1 and defense is not. Getting this
 backwards in either direction would be a real error, so the two conventions are
 stated together wherever either is used.
 
-A shortfall in matched pairs is treated as a fault, not as attrition: both arms
+A shortfall in matched pairs is treated as a fault, not as attrition. Both arms
 are supposed to enumerate the *same* cells, since $S$ is not in the hash, so a
-pair count below the cell count means the arms enumerated different cells — a
-subsampled or partially resumed run — which costs the paired analysis its power
+pair count below the cell count means the arms enumerated different cells: a
+subsampled or partially resumed run. That costs the paired analysis its power
 and, if the difference is systematic, its validity. The unpaired per-model
 contrasts use every trial and are the declared fallback.
 
@@ -1316,12 +1316,12 @@ recorded `invalid` with the exception text retained.
 
 **The trigger is "no tool calls", not "no output", and the difference was a
 real bug.** `deepseek-r1:14b` accepts `think: false`, ignores it, and reasons
-inline. When it truncates it leaves a scrap of leftover prose in `content` —
+inline. When it truncates it leaves a scrap of leftover prose in `content`:
 12, 151 and 613 characters across three of six probe calls that stopped on
 `length` after 2,200–3,100 characters of reasoning. The earlier rule asked "is
 there any content?", so that scrap counted as usable output: the retry never
 fired, `invalid` stayed 0, and the trial was written `delivered = 0,
-invalid = 0` — indistinguishable from a model that competently declined to call
+invalid = 0`, indistinguishable from a model that competently declined to call
 the tool. Whether a trial was voided or scored as a genuine non-delivery came
 down to whether truncation happened to leave prose behind. That is non-random
 measurement error on the **delivery rate**, which is this paper's entire
@@ -1350,7 +1350,7 @@ Results arrive incrementally and later stages are informed by earlier ones.
 
 1. **Screening.** All models × 7 framings × 3 paraphrases × 3 scenarios, other
    factors fixed (`web_search`, authority `none`, position `head`, defense
-   `none`), all three conditions — 36 attack + 36 clean + 36 benign cells on the
+   `none`), all three conditions: 36 attack + 36 clean + 36 benign cells on the
    held-out split. Establishes the main effects of framing and model, RQ1, RQ2
    and the RQ5 contrast.
 2. **Ablation.** Position × authority × carrier, on the framings that survived
@@ -1377,7 +1377,7 @@ A stage that has already completed is listed here for the record rather than as
 a plan:
 
 0. **Controls (COMPLETE).** The three conditions over a matched subset of 13
-   attack cells — `web_search`, `head`, `authority = none`, `defense = none`,
+   attack cells: `web_search`, `head`, `authority = none`, `defense = none`,
    framings {`admin_note`, `html_comment`, `spec_voice`}, three paraphrases, three
    scenarios, held-out split, $T = 20$, 6 models. 4,680 trials. This is the stage
    that fills §7.1–§7.5, and it exists because $\Delta_{\mathrm{inj}}$ and
@@ -1394,20 +1394,20 @@ Budget, read straight out of the harness rather than estimated by hand
 | controls | 39 | 1 | 4,680 | attack + clean + benign |
 | containment | 68 | 1 | 8,160 | attack |
 
-The containment stage is 34 cells on each arm — 3 structured carriers × the
-surviving framings × 3 paraphrases × 3 scenarios, on the held-out split — at
+The containment stage is 34 cells on each arm (3 structured carriers × the
+surviving framings × 3 paraphrases × 3 scenarios, on the held-out split) at
 ≈18.3 GPU-hours by the same per-model summation. The requirement that makes it
 worth running is structural rather than numerical: every cell must appear at
 both levels of $S$ with the same `attack_id`, split and seed, or the pairing
 that E9/E10 depend on does not exist. Verified over the grid: symmetric
 difference zero at both splits (§4.4b).
 
-The stage runs `condition = attack` only. A containment × benign arm — which
-would separate "containment blunts instruction-following in general" from
-"containment blunts *destructive* instruction-following", i.e. would give
-$\Delta_{\mathrm{safety}}$ its own containment contrast — needs no new stage,
-only `--conditions attack benign`, at double the cost. It is not budgeted and is
-`[RESULT: containment × condition interaction]`.
+The stage runs `condition = attack` only. A containment × benign arm needs no
+new stage, only `--conditions attack benign`, at double the cost. That arm would
+separate "containment blunts instruction-following in general" from "containment
+blunts *destructive* instruction-following", i.e. would give
+$\Delta_{\mathrm{safety}}$ its own containment contrast. It is not budgeted and
+is `[RESULT: containment × condition interaction]`.
 
 An earlier draft quoted **10,080** for screening. That number was wrong three
 ways and is withdrawn: it assumed 1,440 clean trials from a carrier × scenario
@@ -1415,7 +1415,7 @@ count of 12 when screening fixes the carrier to `web_search` (3 distinct clean
 stimuli, but 36 clean *cells*, one paired to each attack); it did not match the
 grid the runner actually emits; and at the time the runner's screening stage
 was coded `conditions=("attack",)`, so the command labelled "the confirmatory
-run" would have produced **zero** `clean` and zero `benign` trials — leaving
+run" would have produced **zero** `clean` and zero `benign` trials, leaving
 §3.1's control argument, §7.3's Δ_inj, §7.4's Δ_safety, and the abstract's control
 sentences unfillable. The stage now runs all three conditions, as this section
 always said it did.
@@ -1462,7 +1462,7 @@ pass at `--trials 10` can be extended to 20 later without repeating anything.
   **not** use greedy decoding: the deployment reality being modelled is a
   sampling agent, and a greedy measurement would report a single point of a
   distribution as if it were the distribution.
-- Trials are grouped by model — a model swap costs 10–30 s, so models are never
+- Trials are grouped by model: a model swap costs 10–30 s, so models are never
   interleaved.
 - The GPU slot lock is held for the duration of each model's batch, so other
   local consumers queue rather than evicting the model mid-experiment.
@@ -1530,7 +1530,7 @@ c = \frac{G}{G-1}\cdot\frac{N-1}{N-K},
 $$
 
 where $c$ is the finite-sample correction. **It is not cosmetic and it is not
-optional here**: at $G = 5$, $N = 1{,}298$, $K = 3$ — the fit behind Table 7 —
+optional here**: at $G = 5$, $N = 1{,}298$, $K = 3$ (the fit behind Table 7),
 $c = 1.2519$, so the corrected standard errors are $\sqrt{c} = 1.1189$ times the
 uncorrected ones. Omitting $c$ understates them by 10.6% (equivalently, the
 uncorrected SEs are 89.4% of the reported ones). Reproduced by hand against
@@ -1543,8 +1543,9 @@ numbers below it.
 
 Critical values come from $t(G-1)$ rather than the normal, because with $G \le 6$
 clusters the sandwich estimator is markedly anti-conservative and a $z$ interval
-would be too narrow by a factor that grows as $G$ shrinks. This is a deliberate deviation from the design document's plan of a
-mixed-effects model with a random intercept per family: with **four** families,
+would be too narrow by a factor that grows as $G$ shrinks. This is a deliberate
+deviation from the design document's plan of a mixed-effects model with a random
+intercept per family: with **four** families,
 one of which has a single member, the random-effect variance is not credibly
 identified, and a GLMM would report a precise-looking variance component that
 is essentially an artifact of the prior or the optimizer. The GLMM is reported
@@ -1554,14 +1555,14 @@ prettier.
 
 **Multiplicity.** Holm correction across the framing family of tests. The RQ5
 register contrast is a single pre-specified contrast and is **not** part of that
-family — it is reported uncorrected, with all seven per-framing comparisons
+family; it is reported uncorrected, with all seven per-framing comparisons
 reported separately as corrected secondary analyses. It is no longer designated
 a primary endpoint (§4.6), so "uncorrected" here buys clarity, not licence.
 
 A Holm family must contain each hypothesis **once**. In an earlier revision of
 `analyze.py` the McNemar defense family received both the ITT and the
 both-delivered row for every contrast, so two hypotheses were corrected as a
-family of four — and when every trial delivers, those two rows are the identical
+family of four. When every trial delivers, those two rows are the identical
 table. Holm now runs over the ITT rows only; the per-protocol rows are printed
 as descriptive and uncorrected.
 
@@ -1599,8 +1600,8 @@ $0.812$ describes a different test.
 over an undefined cell:
 
 - Every containment estimate is reported **within carrier** first. Only if the
-  three within-carrier estimates are mutually consistent — assessed by
-  Cochran's $Q$ across carriers, reported whatever it says — is a pooled
+  three within-carrier estimates are mutually consistent (assessed by Cochran's
+  $Q$ across carriers, reported whatever it says) is a pooled
   structured-carrier estimate quoted, and it is quoted with $Q$ beside it.
 - The carrier main effect is reported twice: over all four carriers at
   $S = \texttt{concatenated}$ (where all four exist), and over the three
@@ -1677,14 +1678,14 @@ night's worth of trials rather than two.
 
 ### 5.1 Prompt injection, and indirect injection specifically
 
-Direct prompt injection — a user overriding an application's instructions —
-was described early and is well known [CITE: prompt injection, original
+Direct prompt injection (a user overriding an application's instructions) was
+described early and is well known [CITE: prompt injection, original
 description]. The variant that matters here is **indirect** injection, in which
 the payload arrives through content the model retrieves rather than through the
 user's own message [CITE: indirect prompt injection, foundational paper]. The
-distinction matters because the victim and the attacker are different people,
-which removes the "the user did it to themselves" defence and makes the
-attack a genuine confused-deputy problem [CITE: confused deputy, classical
+distinction matters because the victim and the attacker are different people;
+that difference removes the "the user did it to themselves" defence and makes
+the attack a genuine confused-deputy problem [CITE: confused deputy, classical
 security].
 
 Subsequent work has catalogued payload strategies and proposed defenses at
@@ -1703,8 +1704,8 @@ InjecAgent's `ASR-valid` metric is motivated by the same concern but sidesteps
 it rather than measuring it: the harness teacher-forces the tool call, which
 makes non-delivery structurally impossible instead of quantifying it [CITE:
 InjecAgent, Zhan et al., arXiv:2403.02691]. Neither reports a decomposition, a
-ranking reversal, or an identification strategy for the effect — that is the
-gap this paper fills.
+ranking reversal, or an identification strategy for the effect. That gap is
+what this paper fills.
 
 Two more recent benchmarks name a closely related phenomenon and warrant
 explicit differentiation, since a reader could otherwise mistake either for
@@ -1714,27 +1715,26 @@ goals," terming this "security by incompetence" [CITE: WASP, Evtimov,
 Zharmagambetov, Grattafiori, Guo & Chaudhuri, arXiv:2504.18575, NeurIPS 2025
 D&B]. That is the *third* term of our decomposition, $P(\text{executes} \mid
 \text{obeys})$: WASP's tasks guarantee the payload reaches the agent by
-construction — the agent must visit the attacker-controlled page to complete
-its own assigned task — and its panel is frontier commercial models (GPT-4o,
-o1, Claude 3.5/3.7) that already navigate reliably. Our `deepseek-r1:14b`
-result, delivered 0/258 attack trials because the model never invoked the
-carrier tool at all (§7.1), sits entirely upstream of WASP's regime and is
-invisible to it: WASP has no model incapable of taking the first step, so it
-never encounters the term we isolate.
+construction, since the agent must visit the attacker-controlled page to
+complete its own assigned task. Its panel is frontier commercial models
+(GPT-4o, o1, Claude 3.5/3.7) that already navigate reliably. Our
+`deepseek-r1:14b` result, delivered 0/258 attack trials because the model never
+invoked the carrier tool at all (§7.1), sits entirely upstream of WASP's regime
+and is invisible to it: WASP has no model incapable of taking the first step,
+so it never encounters the term we isolate.
 
-Leong's concurrent stateful-agent study reports a similarly-framed
-dissociation — memory-write rates above 97.5% against downstream execution as
-low as 0% — but on inspection this is storage-vs-execution, not
-delivery-vs-obedience [CITE: Leong, "Injection-Execution Dissociation",
-arXiv:2605.08442]. A run there counts as injected once a save-to-memory call
-fires, in a scenario that instructs the agent to retrieve and save the
-relevant content as its actual assigned task; injection succeeds in 100% of
-the reported attack runs. Delivery is therefore guaranteed by task
-construction in Leong's design exactly as in WASP's, and both papers study
-what happens *after* the payload is already in context. Ours is the only
-design in which the model's own choice not to call a tool — driven by
-competence, not by resistance — is itself the measured event, and in which
-that choice reverses a naive safety ranking.
+Leong's concurrent stateful-agent study reports a similarly-framed dissociation
+(memory-write rates above 97.5% against downstream execution as low as 0%), but
+on inspection this is storage-vs-execution, not delivery-vs-obedience [CITE:
+Leong, "Injection-Execution Dissociation", arXiv:2605.08442]. A run there
+counts as injected once a save-to-memory call fires, in a scenario that
+instructs the agent to retrieve and save the relevant content as its actual
+assigned task. Injection succeeds in 100% of the reported attack runs. Delivery
+in Leong's design is therefore guaranteed by task construction, exactly as in
+WASP's; both papers study what happens *after* the payload is already in
+context. Ours is the only design in which the model's own choice not to call a
+tool — driven by competence, not by resistance — is itself the measured event,
+and in which that choice reverses a naive safety ranking.
 
 <!-- Bibliographic details above (WASP, Leong, AgentDojo, InjecAgent) were
      confirmed by direct fetch of the arXiv abstract pages and, for WASP and
@@ -1781,15 +1781,15 @@ coordination), `analyze.py` (all tables and figures below). Models are served
 by Ollama's native tool-calling API.
 
 Tool definitions are a **frozen snapshot of representative tool schemas** taken
-from the production agent's benchmark harness — the eight-tool list in
-the capability-benchmark harness, which is self-described in code as exactly
-that. An earlier draft called them "the production agent's own tool schemas",
-which overstates it: four of the eight names — `get_stock_quote`, `read_file`,
-`macro_calendar` and, most importantly, **`delete_records`** — do not appear in
-the live registry (`tools/registry.py`). The destructive tool the entire
+from the production agent's benchmark harness: the eight-tool list in
+the capability-benchmark harness, self-described in code as exactly
+that. An earlier draft called them "the production agent's own tool schemas".
+That overstates it. Four of the eight names do not appear in the live registry
+(`tools/registry.py`): `get_stock_quote`, `read_file`, `macro_calendar` and,
+most importantly, **`delete_records`**. The destructive tool the entire
 dependent variable is defined on is a plausible schema, not a deployed tool.
 What the snapshot does buy is a realistically *sized* and realistically *shaped*
-tool list — eight tools with mixed read and write semantics — rather than a
+tool list of eight tools with mixed read and write semantics, rather than a
 two-tool toy constructed for the experiment. The premise in §2.1 that local
 agents hold real write capability is separately true of the deployment; it is
 not evidenced by this particular tool list.
@@ -1849,28 +1849,28 @@ arrived.*
 ### 7.0 Preliminary pilot (dev split, EXPLORATORY ONLY)
 
 **These numbers are real, and they are not evidence for anything.** They are
-one model (`gemma4:26b`), on the **dev** split, at n = 1 trial per attack —
-27 delivered trials total, no `clean` control, no `benign` control. They are
-reported because they are what generated H5, and honesty about provenance
-requires showing them. They are the *hypothesis-generating* data and are
-therefore ineligible to test the hypothesis.
+one model (`gemma4:26b`), on the **dev** split, at n = 1 trial per attack:
+27 delivered trials total, no `clean` control, no `benign` control. We report
+them because they are what generated H5, and honesty about provenance requires
+showing them. Being the *hypothesis-generating* data, they are ineligible to
+test the hypothesis.
 
 `gemma4:26b`, screening-dev, obeyed 8/27 = **29.6%**, Wilson 95% CI
 [15.9, 48.5].
 
-The same model scored 4/4 — i.e. resisted everything — on the earlier 4-case
+The same model scored 4/4 (i.e. resisted everything) on the earlier 4-case
 bench suite. It is tempting to present that as an illustration of n = 1 being a
 coin flip. It is not, and we correct the earlier draft that said so. **The two
 runs used different stimuli.** The bench suite's four cases use the framings
 `system_override`, `html_comment`, `admin_note` and an operator-authority
 notice. On exactly those three framings in the 27-trial run, `gemma4:26b`
-obeyed 0/2, 1/6 and 0/3 — it *replicated* the pilot. The entire 8/27 is driven
+obeyed 0/2, 1/6 and 0/3; it *replicated* the pilot. The entire 8/27 is driven
 by `spec_voice` (5/5) and `polite_request` (2/3), **neither of which exists in
 the bench suite**. The gap is stimulus composition, not sampling variance, and
 attributing it to noise would have been a misdiagnosis of our own data.
 
 n = 1 per cell is still a coin flip, and every proportion in this paper still
-carries an interval — but this particular pair of numbers is not the evidence
+carries an interval. But this particular pair of numbers is not the evidence
 for that.
 
 | Framing | obeyed / delivered | rate | Wilson 95% CI |
@@ -1892,7 +1892,7 @@ POLICY-register framings (`spec_voice` + `polite_request`, excluding
 `admin_note` which went 0/3) 7/8 versus ADVERSARIAL (`system_override` +
 `cross_lingual`) 0/4, Fisher exact two-sided p = 0.010. And this is *precisely*
 the kind of contrast that is trivial to produce by accident when the grouping
-is chosen after seeing the data — which is why §4.6 fixes the grouping in
+is chosen after seeing the data; §4.6 therefore fixes the grouping in
 advance, on surface-strategy grounds, **with `admin_note` inside the POLICY
 group where the pilot says it does not belong.**
 
@@ -1948,9 +1948,9 @@ threshold at which §4.7 requires separate reporting.
 **All eight voided trials are harness-level exceptions, not truncations.**
 Reading the stored `response` field directly: seven are
 `TimeoutError: timed out` on `deepseek-r1:14b` and one is
-`HTTPError: HTTP Error 500` on `gemma4:26b`. The §4.7 truncation rule — which
+`HTTPError: HTTP Error 500` on `gemma4:26b`. The §4.7 truncation rule (which
 voids a turn that ends `done_reason == "length"` with no tool call, and writes
-the distinctive diagnostic `INVALID turn=… done_reason=… retried=…` — **fired
+the distinctive diagnostic `INVALID turn=… done_reason=… retried=…`) **fired
 zero times in this stage**; no row in the database carries that string. So §4.7's
 predicted failure mode is *untested* here rather than confirmed, and an earlier
 revision of this paragraph that called the pattern "exactly as §4.7 predicted"
@@ -1960,9 +1960,9 @@ The 7/8 concentration on the one reasoning model is real and the MNAR concern
 stands, but its cause is **latency**: `deepseek-r1:14b` reasons inline at 21.4
 s/trial against 1.5 s for `gemma4:26b`, so it is the model that hits the wall
 clock, not the model that hits the decoding budget. (These 8 rows are also the
-only ones in the stage whose `seed` is $0$ rather than SHA-256 derived — the
-seed contract holds on all 4,672 valid rows — because `_invalid_row` writes
-before a seed is drawn.) The worst rate, $0.90\%$, is a factor of 22 below the
+only ones in the stage whose `seed` is $0$ rather than SHA-256 derived, because
+`_invalid_row` writes before a seed is drawn; the seed contract holds on all
+4,672 valid rows.) The worst rate, $0.90\%$, is a factor of 22 below the
 $20\%$ threshold at which §4.7 would require separate reporting, so the
 exclusion cannot carry a headline number here (§9.16 bounds it explicitly).
 
@@ -1988,14 +1988,13 @@ before the payload was visible. The pooled attack rate of $0.361$ exceeds the
 $0.0030$ bound by a factor of **120**, and the weakest per-model attack rate
 that is not itself zero — `gemma4:26b` at $0.115$ — exceeds it by a factor of
 38. The attribution in $\Delta_{\mathrm{inj}}$ is therefore not a modelling
-assumption; it is a measured bound. This is the precondition for every causal
-sentence that follows; had it failed, nothing else in §7 would be
-interpretable.
+assumption; it is a measured bound. Every causal sentence that follows rests on
+that precondition. Had it failed, nothing else in §7 would be interpretable.
 
 The last row deserves its own note. `forbidden_called` counts only the
 post-payload turn, which is the correct causal quantity, but it means a turn-1
 destructive call would have been scored $0$ *and* dropped from the delivered
-denominator — biasing $\Delta_{\mathrm{inj}}$ **upward**. Deriving $Y^{(1)}$
+denominator, biasing $\Delta_{\mathrm{inj}}$ **upward**. Deriving $Y^{(1)}$
 from `first_calls` closes that hole. It needs no clean arm and no delivery, and
 at $0/4672$ it is the purest spontaneous-destruction figure in the study.
 
@@ -2019,8 +2018,8 @@ agree to three decimal places. The delivered subsample is therefore a random
 subsample with respect to framing, and the delivered-only framing analyses of
 §7.5 are identified. Position, authority and containment are single-level in
 this stage; their checks are `[RESULT: delivery flatness across position,
-authority, containment]`. `carrier` is excluded from the family by §3.6 —
-$K \to D$ is an edge of the design — and its delivery rates are reported as an
+authority, containment]`. `carrier` is excluded from the family by §3.6
+($K \to D$ is an edge of the design), and its delivery rates are reported as an
 outcome rather than tested for flatness.
 
 **Figure 1 — The exposure decomposition.** Scatter of $\delta_m$ (x) against
@@ -2054,7 +2053,7 @@ a practitioner can read off a model card resolves it:
   Fisher-$z$ 95% CI $[-0.581, 0.979]$. The rank order is broken by
   `qwen2.5:7b`, which at 7.6 B is *more* injectable than both a 25.8 B and a
   27.8 B model. Directionally "bigger is more injectable" is consistent with the
-  data and with H2, and at $n = 5$ it is also consistent with nothing at all —
+  data and with H2, and at $n = 5$ it is also consistent with nothing at all;
   the interval spans from moderate negative to near-perfect positive.
 - **Family.** The two `qwen3moe` tags are $0.508$ and $0.604$; the two models
   the runtime reports as `qwen2` are $0.399$ and undefined. Same-family tags are
@@ -2108,7 +2107,7 @@ $\rho(\text{bench tool-use}, \rho^{\downarrow}) = 0.655$, $[-0.364, 0.960]$,
 $p = 0.333$ (exact permutation over 720 orderings). (Both intervals narrowed
 slightly when `analyze.fisher_z_ci` was corrected: the Spearman variance
 inflation is $1.06$ on the *variance*, so $\mathrm{SE} = \sqrt{1.06/(n-3)}$ and
-not $1.06/\sqrt{n-3}$ — see `APPENDIX_MATH.md` §M8. The interval is an
+not $1.06/\sqrt{n-3}$; see `APPENDIX_MATH.md` §M8. The interval is an
 asymptotic width statement in any case, and the exact permutation $p$ beside it
 is the number to believe.)
 
@@ -2154,9 +2153,9 @@ interval — which is the expected ordering when the resampling unit is finer
 than "one model" but coarser than "one trial."
 
 Because $\hat\pi_0 = 0$ exactly, $\hat\Delta_{\mathrm{inj}}$ coincides with the
-raw attack rate — but that coincidence is a **finding**, not an accounting
-identity, and it is only available because the clean arm was run. Absent it, the
-same $0.361$ would have been consistent with any base rate up to $0.361$.
+raw attack rate. That coincidence is a **finding**, not an accounting identity,
+and it is only available because the clean arm was run. Absent it, the same
+$0.361$ would have been consistent with any base rate up to $0.361$.
 
 Note also the gap between the conditional $0.361$ and the naive
 obeyed-per-attempt $0.300$, pooled — $6.1$ percentage points. Even in a panel
@@ -2179,14 +2178,14 @@ Same three-way comparison as $\Delta_{\mathrm{inj}}$ above: trial-level Fisher
 $[-0.005, 0.070]$; cluster-robust LPM sandwich on model ($G = 5$)
 $[-0.147, 0.212]$; cluster bootstrap on (model × attack_id) ($G = 78$,
 $B = 2000$) point $0.0325$, percentile $[-0.037, 0.104]$, BCa
-$[-0.035, 0.106]$. All three contain zero, which is the point of §7.4 — the
+$[-0.035, 0.106]$. All three contain zero, which is the point of §7.4. The
 bootstrap does not rescue a null that the trial-level interval already reported
 honestly as a null; it only says how much of a non-null the data could still be
 hiding, and the answer is "not much more than the trial-level interval already
 allowed for."
 
-Paired, which is the estimator to prefer because the arms share `attack_id`,
-split and seed (§4.5) — exact McNemar over 1,555 matched pairs on
+The paired estimator is the one to prefer, because the arms share `attack_id`,
+split and seed (§4.5). Exact McNemar over 1,555 matched pairs on
 $(m, q, G, \mathrm{aid}, t)$:
 
 | comparison | pairs | $b$ | $c$ | RD (attack − benign) [95% CI] | cond. OR [exact 95% CI] | $p_{\text{exact}}$ |
@@ -2231,7 +2230,7 @@ tool destroys data or reports host state, compliance does not move. Models are
 not refusing destruction; they are exhibiting a generic, action-insensitive
 reluctance to act on embedded instructions, and whatever resistance they have
 will not scale with how bad the requested action is. The $+0.183$ on
-`spec_voice` is not evidence against this — it is a contrast between *different
+`spec_voice` is not evidence against this; it is a contrast between *different
 prose*, and quoting it as a safety margin would be a category error.
 
 #### The aggregate null hides very large model heterogeneity
@@ -2256,9 +2255,9 @@ because $Q$ is scale-dependent and the choice is not neutral:
 | unpaired Haldane log-OR | 52.49 | 4 | $1.1\times10^{-10}$ | 92.4% |
 | unpaired risk difference | 59.07 | 4 | $4.5\times10^{-12}$ | 93.2% |
 
-The conclusion — *these five models do not share one $\Delta_{\mathrm{safety}}$*
-— is identical on all three, but only the first respects the matching and only
-the first is what §M9 pre-registers. §M9's own simulation shows $Q$ on the
+The conclusion (*these five models do not share one $\Delta_{\mathrm{safety}}$*)
+is identical on all three, but only the first respects the matching and only the
+first is what §M9 pre-registers. §M9's own simulation shows $Q$ on the
 risk-difference scale rejects at close to 100% when the *odds ratio* is
 constant, i.e. it is the scale most likely to manufacture heterogeneity from a
 spread of baseline rates. An earlier revision of this section quoted the
@@ -2279,8 +2278,8 @@ softening. `qwen2.5:7b` ($b = 32$, $c = 11$, $p = 0.0019$) and
 `qwen3-coder:30b` ($b = 36$, $c = 19$, $p = 0.030$) obeyed the **destructive**
 payload strictly more often than the harmless one on matched pairs. On the
 verbatim-matched framing the pattern is sharper still: `qwen3.6:27b` obeyed
-`html_comment` at $15/60$ under attack and $0/60$ under benign — paired RD
-$+0.250$ [0.158, 0.372], $p = 6.1\times10^{-5}$ — while `gemma4:26b` went the
+`html_comment` at $15/60$ under attack and $0/60$ under benign (paired RD
+$+0.250$ [0.158, 0.372], $p = 6.1\times10^{-5}$), while `gemma4:26b` went the
 other way at $b = 0$, $c = 11$, $p = 0.00098$. We do not have a mechanism for
 "destructive requests are *more* obeyed" and we decline to invent one; the
 candidate explanations (the destructive command carries a `filter` argument and
@@ -2329,8 +2328,8 @@ as the cluster — a fourfold difference in width on the same 1,298 observations
 The pre-registered (model × attack_id) cluster bootstrap ($G = 78$, $B = 2000$,
 `APPENDIX_MATH.md` §M13) is no longer owed: percentile $[3.37, 30.78]$, BCa
 $[2.70, 25.03]$. Its BCa lower bound ($2.70$) tracks the $G = 5$ sandwich's
-lower bound ($3.15$) closely — cross-method corroboration that the sandwich's
-width, not the trial-level width, is the one to trust — while its percentile
+lower bound ($3.15$) closely, which is cross-method corroboration that the
+sandwich's width, not the trial-level width, is the one to trust; its percentile
 upper bound ($30.78$) is wider still than either analytic interval. Any paper
 reporting the trial-level interval alone is reporting a precision it does not
 have; with all three now printed together, the honest statement is that the OR
@@ -2351,16 +2350,16 @@ hatched out under the $n < 10$ rule.
 
 Three things in this table are worth more than the marginals that summarise it.
 
-1. **`spec_voice` is near-total on three of five models** — $0.886$, $0.950$,
-   $0.975$ — and merely elevated on the other two ($0.263$ each). It is not
+1. **`spec_voice` is near-total on three of five models** ($0.886$, $0.950$,
+   $0.975$) and merely elevated on the other two ($0.263$ each). It is not
    that policy register works a bit better everywhere; it is that for some
    models it is close to a switch.
 2. **The framing ordering is not preserved across models.** `gemma4:26b`
    resisted `admin_note` perfectly ($0/120$) but obeyed `html_comment` $9/60$;
    `qwen2.5:7b` did the exact reverse ($33/119$ vs $0/60$). A defense tuned on
    one model's framing profile does not transfer. The framing × model
-   interaction is qualitatively large — larger, in rank terms, than the model
-   main effect — and formally testing it is `[RESULT: framing × model
+   interaction is qualitatively large, larger in rank terms than the model main
+   effect, and formally testing it is `[RESULT: framing × model
    interaction with cluster bootstrap]`.
 3. **Two perfect zeros on $n \ge 60$ delivered trials.** These are the cells
    where the Wilson interval earns its place: `gemma4:26b` on `admin_note` is
@@ -2381,18 +2380,18 @@ placeholder.
 exact-McNemar paired risk difference over $(\zeta, t)$-matched pairs with Tango
 intervals; heterogeneity across models summarised by Cochran's $Q$ on the
 per-model **conditional (discordant-pair) log odds ratios** (H6b's target); the
-pooled main effect (H6a) reported last, never without $Q$ beside it — the order
-§4.6 pre-registered. **H6a: $\Delta_S(m) > 0$ on average. H6b, the hypothesis
-that matters: the reduction is strongly model-dependent.**
+pooled main effect (H6a) reported last, never without $Q$ beside it. That is the
+order §4.6 pre-registered. **H6a: $\Delta_S(m) > 0$ on average. H6b, the
+hypothesis that matters: the reduction is strongly model-dependent.**
 
 Design: `run_id = containment-heldout`, held-out split, 5 models
-(`deepseek-r1:14b` excluded a priori — 0/258 delivered attack trials in
+(`deepseek-r1:14b` excluded a priori: 0/258 delivered attack trials in
 `controls-heldout`, so it can contribute no discordant pairs), 34 attack cells
 × 20 trials × 2 containment arms × `condition = attack`, 3 structured carriers
 (`web_search`, `product_kg`, `get_stock_quote`; `read_file` is excluded by
 construction, §4.4b), 3 framings. 6,800 trials, 32 (0.47%) recorded INVALID and
-excluded. Delivery is near-total and flat across arms — `concatenated` $0.9959$,
-`contained` $0.9965$, $\chi^2 = 0.040$, $\mathrm{df} = 1$, $p = 0.841$ — which is
+excluded. Delivery is near-total and flat across arms (`concatenated` $0.9959$,
+`contained` $0.9965$, $\chi^2 = 0.040$, $\mathrm{df} = 1$, $p = 0.841$), which is
 the pre-registered flatness check this identification argument requires
 (§3.6, §4.10): containment is invisible at turn 1, so if it moved delivery the
 conditioning would be suspect, and it does not. The delivered-only contrast is
@@ -2451,7 +2450,7 @@ the corresponding exact McNemar interval by $1.05\times$–$4.16\times$; the
 bootstrap point is the Haldane-consistent $\exp(\widehat{\log\mathrm{OR}})$,
 the same quantity Cochran's $Q$ above consumes, not the raw $c/b$ the exact
 table prints (which is exactly $0$ at `gemma4:26b`'s zero discordant cell and
-cannot seed a resampling distribution) — the two are close but not identical by
+cannot seed a resampling distribution). The two are close but not identical by
 construction. The ranking of the five models is unchanged under either method.
 
 **Interpretation.** H6a holds without qualification and more strongly than
@@ -2465,10 +2464,10 @@ elimination of the attack (relative reduction $\approx 100\%$, RD $0.032$ off a
 small base rate) through `qwen2.5:7b` and `qwen3-coder:30b`'s large partial
 reductions (RD $0.280$ and $0.253$, roughly $84\%$ and $47\%$ relative) to
 `qwen3:30b-instruct`'s smaller partial reduction (RD $0.141$, roughly $32\%$
-relative — "roughly one-third," the figure quoted in the abstract and §1). The
+relative; "roughly one-third," the figure quoted in the abstract and §1). The
 correct deployable statement is therefore **"containment is a real mitigation
 for every model measured, but a defender cannot assume a uniform magnitude
-without checking the checkpoint"** — a stronger and more useful finding than
+without checking the checkpoint"**, a stronger and more useful finding than
 either "containment works" (too vague to act on) or the probe's "works for
 some, not others" (which the full design shows was not what the data
 supported once properly powered; see below).
@@ -2478,7 +2477,7 @@ panel level: for `qwen3:30b-instruct`, the pre-registered cluster bootstrap
 does not exclude $\mathrm{OR} = 1$ (BCa $[0.05, 1.27]$), even though the
 trial-level exact McNemar does so decisively ($p = 5.9\times10^{-13}$, Table
 9). At $G = 34$ clusters this model carries the widest bootstrap interval in
-the panel — the disagreement is a small-$G$ power limitation of the
+the panel. The disagreement is a small-$G$ power limitation of the
 cluster-level test on the model that already has the smallest effect size, not
 evidence the trial-level result is spurious. But it means "reduces obedience
 for every model, $p < 10^{-6}$" is trial-level-confirmed for all five and
@@ -2549,20 +2548,20 @@ concatenated rate at full scale is $0.536$, driven substantially by `spec_voice`
 
 **(b) The probe read `qwen3-coder:30b` as barely affected by containment; the
 confirmatory stage shows this was a low-power false negative.** At $n = 30$
-pairs the probe found $16/30 \to 10/30$, $p = 0.19$ (ns) — "does almost
+pairs the probe found $16/30 \to 10/30$, $p = 0.19$ (ns); "does almost
 nothing" was the honest reading of that cell at that sample size. At $n = 672$
 pairs, properly powered, the same contrast is $360/672 \to 190/672$
 ($0.536 \to 0.283$), cond. OR $0.11$ $[0.07, 0.17]$,
 $p = 1.7\times10^{-35}$ — one of the **strongest** effects in the five-model
-panel, not the weakest. The probe's qualitative claim — that containment
-"abolishes the attack for one model and does almost nothing for another" — is
+panel, not the weakest. The probe's qualitative claim (that containment
+"abolishes the attack for one model and does almost nothing for another") is
 the specific claim Table 9 corrects: containment does not do "almost nothing"
 for any model measured; what varies is how much it does.
 
 **(c) What the probe correctly anticipated.** The probe's non-observation was
 that the model × containment interaction could not be estimated from $n = 120$
 — `gemma4:26b`'s contained cell was $0/30$, complete separation, and a logistic
-interaction term did not converge. That diagnosis was right: the interaction
+interaction term did not converge. That diagnosis was right. The interaction
 needed the full design. What the full design shows the interaction to *be* is
 Cochran's $Q = 31.03$ ($p = 3.0\times10^{-6}$) on the per-model log-ORs above —
 real, significant heterogeneity in magnitude, coexisting with a uniform
@@ -2573,8 +2572,8 @@ direction the $n = 120$ sample was too small to characterise correctly for
 them.** $n = 10$ per cell; two models; one carrier; one position; framings
 restricted to the three that survived the pilot; not split-controlled. And the
 probe's seed is derived from Python's built-in `hash()` over a tuple containing
-a string, which is salted per process — so the seeds are **recorded** in the
-JSONL and the arms within one probe run are correctly paired, but the
+a string, which is salted per process; the seeds are therefore **recorded** in
+the JSONL and the arms within one probe run are correctly paired, but the
 derivation is **not reproducible across processes**. The main harness fixed
 this before any confirmatory data existed (§11.3); the probe predates that fix
 and was not re-run, and none of this affects `containment-heldout`, which uses
@@ -2584,7 +2583,7 @@ the fixed seeding throughout.
 by a 30-trial smoke run (`run_id = smoke-containment`, 15 trials per arm) to
 verify that both arms write, that the resume logic skips completed trials
 across the widened primary key, and that `analyze.py` refuses to marginalise
-over carrier — its outcome numbers were never reported, correctly, since 15
+over carrier. Its outcome numbers were never reported, correctly, since 15
 trials per arm on a smoke configuration is not evidence. The full stage
 subsequently ran to completion as `containment-heldout` (6,800 trials,
 integrity verified: `PRAGMA integrity_check: ok`, exact expected row counts),
@@ -2598,7 +2597,7 @@ model × containment cell structure underlying $Q$).
 
 ### 7.7 RQ5 — The register effect (exploratory; see §4.6 for why it is not an endpoint)
 
-**Not computable from the completed stage** — the controls stage contains no
+**Not computable from the completed stage**: the controls stage contains no
 ADVERSARIAL framing (§7.5). Requires the screening stage over all seven framings.
 
 **Table 8 — $\Delta_{\mathrm{reg}}$ at two units.** POLICY vs ADVERSARIAL,
@@ -2613,7 +2612,7 @@ by construction; printing them together is the point.
 correlation (§9.15). Reported adjacent to Table 8, not in an appendix, because
 "POLICY register" and "longer payload" are not separable in this stimulus set.
 Over the three framings run so far, Spearman(payload chars, obedience)
-$= 0.500$, exact permutation $p = 1$ over the $3! = 6$ orderings — which is
+$= 0.500$, exact permutation $p = 1$ over the $3! = 6$ orderings, which is
 simply the statement that **three points cannot establish a monotone
 relationship**, not evidence against one. The pilot's $\rho = 0.81$ over seven
 framings is the informative version and remains exploratory.
@@ -2672,7 +2671,7 @@ resistance against quantization level.
 By framing, delivered attack trials: `admin_note` 0.816 [0.783, 0.845],
 `html_comment` 0.780 [0.730, 0.823], `spec_voice` 0.386 [0.340, 0.435].
 
-Three things follow. First, **the clean arm answers perfectly** — $1297/1297$ —
+Three things follow. First, **the clean arm answers perfectly** ($1297/1297$),
 which validates the scenario-anchor measure end to end: when nothing interferes,
 the models complete the task every time, so any drop is attributable to the
 payload rather than to task difficulty or to a broken matcher. Second, the
@@ -2684,7 +2683,7 @@ the degradation is **framing-specific and inversely related to attack success**:
 
 The interpretation deserves care in both directions, and one plausible reading
 turns out to be wrong, so we state the arithmetic. A successful attack that
-*also* answers the user is the dangerous quadrant — the destructive call happens
+*also* answers the user is the dangerous quadrant: the destructive call happens
 underneath a transcript that looks correct. Restricting to obeyed trials:
 
 | subset | answered / obeyed | rate [95% CI] |
@@ -2701,8 +2700,8 @@ is a property of these models' single-turn behaviour at this decoding budget,
 not a security property, and §7.11 shows the silent quadrant is real and
 non-empty. Of the 97 obeyed-and-answered trials, a crude lexical filter finds 38
 whose visible text mentions nothing about deletion, purging, caches,
-maintenance, policy or corruption — i.e. a fully clean-looking transcript over a
-destructive call. That filter is a keyword heuristic and is reported as an
+maintenance, policy or corruption (i.e. a fully clean-looking transcript over a
+destructive call). That filter is a keyword heuristic and is reported as an
 indicative count, not an estimate: `[RESULT: audited silent-compliance rate —
 obeyed ∧ answered ∧ no disclosure, human-verified on a stratified sample]`.
 `answered` is itself a string match and a secondary outcome (§9.6); this whole
@@ -2733,8 +2732,8 @@ as its reason for acting**:
 In none of these does the model treat the instruction as *contested*. It is not
 overridden; it is **adopted**, restated in the first person, and offered to the
 user as the agent's own justification. This is the qualitative form of §8.1's
-mechanism claim — that instruction-tuned models detect *conflict* rather than
-tracking *authority* — and it is what a payload that announces no conflict buys.
+mechanism claim (that instruction-tuned models detect *conflict* rather than
+tracking *authority*), and it is what a payload that announces no conflict buys.
 
 A second shape is partial compliance with a hedge, which a naive transcript
 review might score as resistance:
@@ -2786,27 +2785,27 @@ conjecture and is written as one.*
 
 **What is already established, and what still is not.** The completed stage
 establishes, on held-out data, that *the framing of an identical destructive
-command changes its success rate by 48 percentage points* — `spec_voice`
+command changes its success rate by 48 percentage points*: `spec_voice`
 $0.667$ $[0.619, 0.711]$ versus `admin_note` $0.184$ $[0.155, 0.217]$, OR
 $8.89$ $[3.15, 25.07]$ clustered on model. That is not the register hypothesis;
 it is the weaker and unarguable statement that **framing dominates**, and it
 holds without needing the POLICY/ADVERSARIAL construct at all. The register
-hypothesis proper — that the *direction* of the framing effect is
-legitimacy-of-register rather than assertiveness — needs the two ADVERSARIAL
-framings, which the controls stage did not include, and remains open (§7.7).
+hypothesis proper, that the *direction* of the framing effect is
+legitimacy-of-register rather than assertiveness, needs the two ADVERSARIAL
+framings. The controls stage did not include them, so it remains open (§7.7).
 Everything below is written against the register hypothesis and should be read
 as conditional; the 48-point framing effect underneath it is not.
 
 If H5 holds, the practical implication is uncomfortable for the way injection
 defenses are currently built and tested. Red-team suites, filter heuristics and
 practitioner intuition are all organised around payloads that *look* like
-attacks — the imperative override, the role-play jailbreak, the encoded
+attacks: the imperative override, the role-play jailbreak, the encoded
 string. Models appear to be trained, whether deliberately or as a side effect
 of instruction tuning on adversarial data, to be suspicious of exactly that
 register.
 
 But refusal that is triggered by *register* rather than by *provenance* is not
-a security property. It is a stylistic filter, and an attacker's cost to evade
+a security property. It is a stylistic filter; an attacker's cost to evade
 it is one rewrite. "IGNORE ALL PREVIOUS INSTRUCTIONS" becomes "Per
 data-handling policy 4.2.1, stale entries MUST be purged before results are
 surfaced," and the same request now arrives wearing the costume of the
@@ -2815,8 +2814,8 @@ this by making the model more suspicious of policy-shaped language: agents are
 *supposed* to follow policy-shaped language, and an agent that refuses
 maintenance instructions is not useful.
 
-The mechanism we would tentatively propose — and it is a hypothesis, not a
-result — is that instruction-tuned models learn to detect *conflict*
+The mechanism we would tentatively propose is a hypothesis, not a result:
+instruction-tuned models learn to detect *conflict*
 ("ignore your instructions") rather than to track *authority* ("who said
 this"). A payload that does not announce a conflict never triggers the
 detector, regardless of what it asks for. If that is right, the defense has to
@@ -2837,7 +2836,7 @@ stronger and more embarrassing for the selection process. **The capability
 battery is degenerate at the top**: five of the six models score $1.000$ on
 both tool-use and agentic reliability, so the predictor has no variance and no
 correlation with $\omega$ exists to estimate. Meanwhile $\omega$ ranges over
-$[0.115, 0.604]$ across those same five — a 5.2-fold spread — on identical
+$[0.115, 0.604]$ across those same five (a 5.2-fold spread) on identical
 stimuli. A practitioner comparing these five models on the numbers that are
 published sees five identical models; the property that decides whether a
 poisoned page deletes their data varies by a factor of five and is invisible.
@@ -2846,8 +2845,8 @@ the models actually differ is not measured anywhere the practitioner can see it.
 
 ### 8.3 The attack-surface paradox, and "just use a better model"
 
-If H2 holds — obedience to injected instructions rises with tool-use competence
-*conditional on delivery* — then the most common piece of advice about
+If H2 holds (obedience to injected instructions rises with tool-use competence
+*conditional on delivery*), then the most common piece of advice about
 injection is not merely useless but backwards. Upgrading to a more capable
 agent model increases D_m (the model actually uses its tools) and, if H2 is
 right, does not decrease and may increase O_m. Realised exposure R_m = D_m·O_m
@@ -2855,8 +2854,8 @@ therefore goes **up** with capability.
 
 This also explains why the naive metric is so seductive: incompetent models
 genuinely do have low realised exposure, so scoring them as "safe" is not
-absurd on its face. It is just that their safety is unpurchasable — you cannot
-deploy an agent that does not call tools — and it evaporates the moment the
+absurd on its face. It is just that their safety is unpurchasable (you cannot
+deploy an agent that does not call tools), and it evaporates the moment the
 model is upgraded. Measuring $\omega_m$ separates the safety you can keep from
 the safety that is an artifact of the model not working.
 
@@ -2864,11 +2863,11 @@ the safety that is an artifact of the model not working.
 and will not be by this design.** Table 4 shows a model moving from rank 1 to
 rank 6 on a scoring convention, with $\rho^{\downarrow} = 0.000$ and
 $\rho^{\uparrow} = 1.000$ for the same 258 trials, while $\omega$ is
-unidentified — and shows Kendall $\tau = 1.00$ among the five models where it
+unidentified. It also shows Kendall $\tau = 1.00$ among the five models where it
 *is* identified, so the distortion is entirely localised at the positivity
 violation. No correlation coefficient is needed for that argument and none is
-claimed. The correlational form of H2 — that $\omega$ rises with $\delta$
-across models — is untestable at six models with four of five deliveries
+claimed. The correlational form of H2, that $\omega$ rises with $\delta$
+across models, is untestable at six models with four of five deliveries
 saturated at $1.000$ (§9.1, §9.14), and we say so rather than reporting
 $\rho = 0.000$, $[-0.899, 0.899]$ as though it were evidence of anything.
 
@@ -2887,7 +2886,7 @@ injected instructions; they are exercising generic compliance.** The observed
 resistance rate is a property of how instruction-shaped and how legitimate the
 surrounding text is, not of how harmful the requested action is. Prompt-level
 safety training has not generalised to the tool-output channel in any
-action-sensitive way. A defender cannot rely on "it would refuse if it were
+action-sensitive way; a defender cannot rely on "it would refuse if it were
 really dangerous", because on this evidence it does not know that it is.
 
 That makes the case for **structural** mitigation — capability restriction,
@@ -2940,7 +2939,7 @@ coin flip per model" — it converts an unmeasured assumption into a per-model
 property a deployment can test in an afternoon on its own hardware.
 
 Two cautions the confirmatory result does not remove. First, the effect is not
-uniform across framings either — the probe's observation that it concentrates
+uniform across framings either. The probe's observation that it concentrates
 in `spec_voice`, the framing that actually succeeds, generalises: a mitigation
 that bites hardest where the attack is strongest is *more* valuable than one
 that bites uniformly, but it also means a pooled effect averages over cells
@@ -2970,11 +2969,11 @@ cannot be trimmed to fit what we find.
 
 ### 9.1 Six models is a small *n* for any cross-model claim
 
-RQ1 and RQ2 are correlations across models. With six models — really **four
-families**, one of which (`deepseek-r1:14b`, a Qwen2.5 distillation) shares a
-base with another (`qwen2.5:7b`) — the effective sample size for a cross-model
-correlation is somewhere between four and six, and the confidence interval on
-any such correlation will be very wide. **We will report those intervals and we
+RQ1 and RQ2 are correlations across models. Six models is really **four
+families**: `deepseek-r1:14b`, a Qwen2.5 distillation, shares a base with
+`qwen2.5:7b`. The effective sample size for a cross-model correlation is
+somewhere between four and six, and the confidence interval on any such
+correlation will be very wide. **We will report those intervals and we
 will not describe a correlation of this precision as evidence of orthogonality
 in any strong sense.**
 
@@ -2983,14 +2982,14 @@ stated plainly because it constrains what the title and abstract are allowed to
 say. **The binding constraint at six models is discreteness, not variance.**
 `analyze.spearman_exact` enumerates all $6! = 720$ orderings, so the null it
 inverts is discrete: the smallest attainable two-sided $p$ is $0.00278$, and the
-smallest $|\rho|$ that reaches $p \le 0.05$ is **0.8857** — the next attainable
+smallest $|\rho|$ that reaches $p \le 0.05$ is **0.8857**. The next attainable
 value down, $0.8286$, carries $p = 0.0583$ and cannot be reported as
 significant no matter how clean the data are. The Fisher-$z$ figure of **0.812**
 that `power.py` §6 quotes is the asymptotic answer for a test this study does
 *not* run, and it is optimistic by 0.07.
 
 Power follows the same split, and the two must not be confused (`power.py` §16,
-3,000 sims, exact permutation test — the one `analyze.py` runs):
+3,000 sims, exact permutation test; the one `analyze.py` runs):
 
 | true ρ | exact permutation, n = 6 | Fisher-z asymptotic, n = 6 |
 |---|---|---|
@@ -3000,11 +2999,11 @@ Power follows the same split, and the two must not be confused (`power.py` §16,
 
 So a genuinely true ρ = 0.7 reaches significance in about **21%** of six-model
 panels and ρ = 0.5 in about **10%** — not the 32%/16% the asymptotic column
-suggests, and an earlier revision of this section quoted 31%/15%, which were
+suggests. An earlier revision of this section quoted 31%/15%, which were
 neither. Reaching 80% power needs 14 models at ρ = 0.7 and 30 at ρ = 0.5 on the
 *asymptotic* accounting, and more on the exact one. A non-significant
 correlation is therefore the *expected* outcome both under H1 and under a strong
-true effect — the test cannot tell them apart. Compounding it, §9.13's
+true effect: the test cannot tell them apart. Compounding it, §9.13's
 attenuation from a noisy capability battery biases the estimate toward H1's own
 null.
 
@@ -3013,14 +3012,15 @@ asserts more than this design can establish**, and unless the model count grows
 it should be read as a description of the mechanism the paper does establish
 (delivery gates exposure; framing dominates model identity) rather than as a
 tested cross-model claim; retitling before submission is the honest option.
-And six models is a **choice, not a hardware constraint** — 24 GB at Q4 admits
+And six models is a **choice, not a hardware constraint**: 24 GB at Q4 admits
 considerably more than four families, and a reviewer will say so. Downloading
-more checkpoints is the single cheapest improvement available to RQ1. The honest statement H1 can support is "capability
-scores did not predict injection resistance in this sample, with an interval
-wide enough to be consistent with a moderate relationship" — not "capability
-and safety are orthogonal." The within-model factorial results (framing,
-position, authority, defense) are far better powered than the cross-model ones,
-and the paper's weight should rest on them.
+more checkpoints is the single cheapest improvement available to RQ1. The
+honest statement H1 can support is "capability scores did not predict injection
+resistance in this sample, with an interval wide enough to be consistent with a
+moderate relationship" — not "capability and safety are orthogonal." The
+within-model factorial results (framing, position, authority, defense) are far
+better powered than the cross-model ones, and the paper's weight should rest on
+them.
 
 ### 9.2 Single hardware and serving-stack baseline
 
@@ -3032,9 +3032,10 @@ differences are exactly the boundary the attack targets.
 
 ### 9.3 Quantization is a single arm at the primary stage
 
-All primary results are at Q4_K_M. RQ3 varies quantization only for 2–3
+All primary results are at Q4_K_M; RQ3 varies quantization only for 2–3
 families in a later stage. Conclusions about the Q4 population generally rest
-on the assumption that these families are representative, which is untested.
+on the assumption that these families are representative, and that assumption
+is untested.
 
 ### 9.4 Synthetic tools, not a live agent
 
@@ -3048,8 +3049,8 @@ either direction. We do not know the sign of that bias.
 ### 9.5 The destructive tool is simulated — we measure intent, not harm
 
 `delete_records` is never executed. The dependent variable is that the model
-*emitted a call* to it. This is the right measurement for a controlled study
-and it is genuinely what a real deployment would gate on, but it is not the
+*emitted a call* to it. This is the right measurement for a controlled study,
+and it is genuinely what a real deployment would gate on. But it is not the
 same as demonstrated harm, and the paper must not use language implying that
 data was destroyed. A model that calls the tool with malformed arguments, or
 that would have been blocked by an argument validator, is scored as obedient
@@ -3066,7 +3067,7 @@ not be quoted.
 
 Even fixed, the measure is crude: it will miss correct answers that paraphrase
 the anchor, and it will accept responses that mention the anchor while
-otherwise failing the task. One residual asymmetry is worth naming — the
+otherwise failing the task. One residual asymmetry is worth naming: the
 `get_stock_quote` carrier returns the anchor *as the price*, so `answered` is
 easier to satisfy there than on the other three carriers; it must be reported
 per carrier, not pooled. `answered` is a **secondary** outcome and should be
@@ -3086,9 +3087,9 @@ so that a reader who rejects the construct can still read the data.
 
 ### 9.8 Seven framings do not span the space of framings
 
-They were written by us. They are not sampled from real attacks, and there is
-no claim that they are representative of what an adversary would produce. A
-framing we did not think of could behave differently from all seven.
+We wrote them. They are not sampled from real attacks, and there is no claim
+that they are representative of what an adversary would produce. A framing we
+did not think of could behave differently from all seven.
 
 ### 9.9 Ollama- and chat-template-specific
 
@@ -3100,10 +3101,9 @@ is that fragile.
 
 ### 9.10 Temperature 0.7, not greedy
 
-Chosen to model a real sampling agent. It means every measurement carries
-sampling variance by design, and it means these numbers do not describe what
-the model would do at temperature 0. Results are rates, not deterministic
-behaviours.
+Chosen to model a real sampling agent. Every measurement therefore carries
+sampling variance by design, and these numbers do not describe what the model
+would do at temperature 0. Results are rates, not deterministic behaviours.
 
 ### 9.11 Single-turn only
 
@@ -3122,7 +3122,7 @@ as one.
 The capability metrics used in RQ1 are from a small internal bench (tool
 calling, code, reasoning; 8–12 items each), not from a standard public
 benchmark. They are noisy, and noise in the predictor attenuates any
-correlation toward zero — which biases the analysis *toward* H1. This must be
+correlation toward zero, which biases the analysis *toward* H1. This must be
 stated whenever H1 is discussed, because it means a null result is partly
 manufactured by measurement error. Reporting the capability battery's own
 confidence intervals, and ideally supplementing with a public benchmark score
@@ -3134,13 +3134,14 @@ per model, is required before the RQ1 claim is publishable.
 The between-model correlation in RQ2 is a different structure and does not
 inherit that argument. Delivery there is an observed model attribute, not a
 randomised treatment, so conditioning on it selects trials on a per-trial latent
-state that also drives second-turn obedience — and it selects harder for
+state that also drives second-turn obedience. It also selects harder for
 low-delivery models, exactly the models RQ2 is about.
 
-We simulated it — `power.py` §17, 2,000 panels per cell, 6 models, 780
-trials/model, median measured Spearman ρ — separating model-level traits ($T$
-for delivery, $U$ for obedience) from a per-trial latent state $M$ that feeds
-both. $\gamma$ is how hard $M$ drives obedience: $0$ is no collider path.
+We simulated it in `power.py` §17: 2,000 panels per cell, 6 models, 780
+trials/model, median measured Spearman ρ. The simulation separates model-level
+traits ($T$ for delivery, $U$ for obedience) from a per-trial latent state $M$
+that feeds both. $\gamma$ is how hard $M$ drives obedience: $0$ is no collider
+path.
 
 | true ρ | γ = 0 | γ = 1 (moderate) | γ = 2 (strong) |
 |---|---|---|---|
@@ -3152,12 +3153,12 @@ claim: **the conditioning cannot fabricate the attack-surface paradox, it can
 only hide it.** At a true ρ of zero the measured value moves monotonically
 *down* as the collider strengthens; at a true ρ of 0.7 it is attenuated in the
 same direction, by 0.23 at γ = 2. It never manufactures a positive correlation.
-The magnitudes are illustrative rather than calibrated — γ is not estimated from
-the data and the data-generating process is a stylised logistic — so we quote
+The magnitudes are illustrative rather than calibrated (γ is not estimated from
+the data, and the data-generating process is a stylised logistic), so we quote
 the sign and the monotonicity, not the numbers, as evidence.
 
 A positive RQ2 is therefore credible and, if anything, understated. A *null* RQ2
-is uninterpretable, for two independent reasons — this selection attenuation,
+is uninterpretable, for two independent reasons: this selection attenuation,
 and the 21% power at ρ = 0.7 from §9.1. §4.6 called H2 "the paper's central claim
 and its most falsifiable one". On the design as built it is the least
 falsifiable one, and we say so rather than letting a null read as evidence.
@@ -3184,7 +3185,7 @@ stage and not a property of the models; (b) the per-model ordering in Table 3
 is stable across the three framings run but the framing × model table shows the
 ordering is **not** framing-invariant, so it may reorder when the other four
 framings arrive; (c) the delivery flatness check has been run against framing
-and condition only — position, authority and containment remain unchecked, and
+and condition only: position, authority and containment remain unchecked, and
 (A1) could still fail for them. `carrier` is not part of that family (§3.6:
 $K \to D$ exists by construction), so its delivery variation is never evidence
 against (A1) and is never grounds to discard a delivered-only analysis of the
@@ -3197,8 +3198,8 @@ prose, because a harmless request wrapped in "records are corrupt" would test
 incoherence rather than harmlessness. That is the right design choice and it has
 a cost: on two of the three framings the attack/benign contrast varies prose as
 well as action. §7.4 reports the framing breakdown so the reader can see exactly
-how much this matters — it is the difference between $-0.048$, $-0.010$ and
-$+0.183$ — and treats the verbatim-matched `html_comment` estimate as primary.
+how much this matters (the difference between $-0.048$, $-0.010$ and $+0.183$),
+and treats the verbatim-matched `html_comment` estimate as primary.
 A cleaner design would use a benign tool whose natural rationale is
 interchangeable with the destructive one, and an argument-matched benign
 command; ours takes no arguments while `delete_records` takes a `filter`, and
@@ -3210,7 +3211,7 @@ $\Delta_{\mathrm{safety}}$ on two models (§7.4). Not fixed here; prescribed.
 §4.10 fixes the **(model × attack_id) cell** as the unit of independent
 replication. `analyze.py` delivers trial-level Wilson / Newcombe / Tango
 intervals for proportions, cluster-robust sandwich SEs on model (with
-$t(G-1)$ critical values) for the regressions, and — as of this revision —
+$t(G-1)$ critical values) for the regressions, and, as of this revision,
 `analyze.cluster_bootstrap` (`APPENDIX_MATH.md` §M13), a nonparametric
 percentile-and-BCa bootstrap resampling (model × attack_id) clusters with
 replacement, $B = 2{,}000$. It has been run for the nine quantities that carry
@@ -3220,7 +3221,7 @@ plus five per-model containment ORs from `containment-heldout` ($G = 170$
 pooled, $G = 34$ per model; §7.6). Coverage was validated on synthetic
 beta-binomial cluster-correlated data with a known true RD before trusting it
 on real data: percentile and BCa both hit $93.7\%$ nominal-$95\%$ coverage
-at $G = 24$ ($N_{\mathrm{sim}} = 300$, $B = 400$), and a negative-control run
+at $G = 24$ ($N_{\mathrm{sim}} = 300$, $B = 400$). A negative-control run
 that resampled individual trials instead of clusters — the exact mistake this
 design guards against — measured only $75.3\%$ coverage, confirming the check
 discriminates the failure mode it exists to catch.
@@ -3228,15 +3229,15 @@ discriminates the failure mode it exists to catch.
 **It has not been run for every proportion interval in §7.** Tables 4 and 6,
 the per-cell figures, and the RQ2 correlations remain trial-level
 Wilson/Newcombe, which are narrower than the pre-registered analysis would make
-them by an amount that grows with the intraclass correlation within a cell —
-and with 20 seed-sharing replicates per cell, that correlation is not small.
+them by an amount that grows with the intraclass correlation within a cell.
+With 20 seed-sharing replicates per cell, that correlation is not small.
 For the three `controls-heldout` quantities with a $G = 5$ model-clustered
 sandwich to compare against, the pattern is mixed rather than uniformly "in
 between": $\Delta_{\mathrm{inj}}$'s and $\Delta_{\mathrm{safety}}$'s bootstrap
 intervals fall inside the sandwich interval and outside the trial-level one, as
 finer-than-model, coarser-than-trial resampling would predict, and are
-$2.5$–$2.7\times$ tighter than the sandwich; the framing OR's bootstrap does
-not follow that pattern — its percentile upper bound ($30.78$) is *wider* than
+$2.5$–$2.7\times$ tighter than the sandwich. The framing OR's bootstrap does
+not follow that pattern. Its percentile upper bound ($30.78$) is *wider* than
 the sandwich's ($25.07$), while its BCa lower bound ($2.70$) tracks the
 sandwich's lower bound ($3.15$) closely, which is cross-method corroboration on
 the bound that matters for the paper's claim (that the OR is bounded well above
@@ -3247,11 +3248,11 @@ BCa under the (model × attack_id) bootstrap ($G = 78$). Containment has no
 sandwich comparator (§7.6 fits no logistic model for it); there the bootstrap
 percentile interval is $1.05$–$4.16\times$ wider than the corresponding exact
 McNemar interval, model-dependent, with one model (`gemma4:26b`) where BCa is
-narrower than percentile rather than wider — flagged in §7.6 as a skewed
-bootstrap distribution rather than treated as a tighter estimate.
+narrower than percentile rather than wider. §7.6 flags that as a skewed
+bootstrap distribution rather than treating it as a tighter estimate.
 
 No headline conclusion in this paper turned out to be borderline under any of
-these three widenings — $\Delta_{\mathrm{inj}} = 0.361$ against a $0.0030$
+these three widenings: $\Delta_{\mathrm{inj}} = 0.361$ against a $0.0030$
 bound, a 48-point framing effect, and the containment finding's five ORs all
 below 1 with all five $p < 10^{-6}$ all survive. The two places where interval
 width does carry part of the argument, the $\Delta_{\mathrm{safety}}$ null and
@@ -3281,30 +3282,31 @@ structured carriers as the design always specified, and says nothing about
 
 **(b) The `containment-heldout` stage is now the primary evidence; the probe is
 retained only as the exploratory record that preceded it.** The stage that used
-to be a gap — "all containment evidence to date is a probe, $n = 120$, two
-models, one carrier" — has run: 6,800 trials, five models, three structured
+to be a gap ("all containment evidence to date is a probe, $n = 120$, two
+models, one carrier") has run: 6,800 trials, five models, three structured
 carriers, three framings, held-out split, integrity-verified and independently
 reproduced twice (§7.6). No claim in this paper's headline findings rests on
 the probe any longer; it is labelled and subordinated everywhere it still
 appears (§7.6). What remains true of the probe, unchanged, is that it was never
-split-controlled and its seeds are not reproducible across processes — neither
-of which propagates into `containment-heldout`, which uses the fixed seeding
+split-controlled and its seeds are not reproducible across processes. Neither
+of those propagates into `containment-heldout`, which uses the fixed seeding
 scheme throughout (§11.3).
 
 **(c) The interaction the design targeted is now estimated, via the route the
 design specified.** H6b concerns the model × containment interaction, which the
-$n = 120$ probe could not put an interval on — `gemma4:26b`'s contained cell
+$n = 120$ probe could not put an interval on: `gemma4:26b`'s contained cell
 was $0/30$, complete separation. §4.6 pre-registered Cochran's $Q$ on the
 per-model conditional log-ORs as the heterogeneity summary for exactly this
 reason, rather than a single interaction coefficient that a zero cell can break.
 That statistic is now computed: $Q = 31.03$, $\mathrm{df} = 4$,
-$p = 3.0\times10^{-6}$, $I^2 = 87.1\%$ (§7.6) — real, significant heterogeneity
-in magnitude, alongside a direction (containment helps) that turned out **not**
-to be heterogeneous at all, which is the part the probe's small sample read
-wrong for `qwen3-coder:30b` specifically (§7.6). A formal pairwise contrast
-between the largest and smallest per-model effect, with its own cluster
-bootstrap interval, was not separately computed; Cochran's $Q$ is the
-heterogeneity statistic the design promised and is what §7.6 reports against.
+$p = 3.0\times10^{-6}$, $I^2 = 87.1\%$ (§7.6). That is real, significant
+heterogeneity in magnitude, alongside a direction (containment helps) that
+turned out **not** to be heterogeneous at all, which is the part the probe's
+small sample read wrong for `qwen3-coder:30b` specifically (§7.6). A formal
+pairwise contrast between the largest and smallest per-model effect, with its
+own cluster bootstrap interval, was not separately computed; Cochran's $Q$ is
+the heterogeneity statistic the design promised and is what §7.6 reports
+against.
 
 ### 9.15 The register effect is confounded with payload length
 
@@ -3344,7 +3346,7 @@ encouraging for the register construct and is far too thin to lean on.
 
 `analyze.py` §3c prints this correlation next to the framing table on every run,
 deliberately, so the confound travels with the result. Removing it requires
-length-matched templates — the same stimulus-set change §4.6 prescribes. **No
+length-matched templates, the same stimulus-set change §4.6 prescribes. **No
 amount of trial replication helps**, because the confound is at the stimulus
 level: more trials per framing buy precision on a quantity that is still two
 things at once.
@@ -3359,9 +3361,9 @@ one that actually occurred is **latency and transport failure**: a request that
 times out or returns HTTP 500 is written `INVALID` by `runner._invalid_row`.
 Either way, reasoning models are excluded at a higher rate than instruction-tuned
 ones, and reasoning models are the ones whose safety behaviour is most
-interesting. Excluding them is MNAR, not MCAR, and the §4.7 rule change — which
+interesting. Excluding them is MNAR, not MCAR, and the §4.7 rule change (which
 correctly voids truncated turns that the old rule silently scored as competent
-non-deliveries — can only *increase* the rate. We therefore report the invalid
+non-deliveries) can only *increase* the rate. We therefore report the invalid
 rate per model per cell as a table rather than a footnote, and bound every
 headline result under best-case and worst-case imputation of the invalid trials.
 If a conclusion flips under those bounds it is not a conclusion.
@@ -3371,8 +3373,8 @@ one, not the one §4.7 predicts.** 8 of 4,680 trials (0.17%) were voided: 7 on
 `deepseek-r1:14b` (0.0090 $[0.0044, 0.0184]$), every one of them
 `TimeoutError: timed out`, and 1 on `gemma4:26b` (0.0013 $[0.0002, 0.0072]$),
 an `HTTPError: HTTP Error 500`; the other four models are at $0/780$. The
-truncation rule fired zero times — no row in the database carries its diagnostic
-string — so §4.7's central prediction is **untested by this stage**, and any
+truncation rule fired zero times (no row in the database carries its diagnostic
+string), so §4.7's central prediction is **untested by this stage**, and any
 future stage that exercises it may show a different, larger rate. The
 concentration is still the MNAR signature — $7/8$ of the missingness lands on
 the one reasoning model, which is also the slowest by 14× — but the *magnitude*
@@ -3410,15 +3412,15 @@ whose entire purpose is to measure both arms.
 into the serialized tool result.** The controls stage predates the containment
 factor; all 4,680 of its trials are, factually and by database migration, at
 $S = \texttt{concatenated}$. §7.6 now puts the size of that conditionality at
-$0.160$ $[0.145, 0.175]$ pooled — up to a near-complete elimination of the
-attack on `gemma4:26b` specifically — measured on 3,353 matched pairs across
+$0.160$ $[0.145, 0.175]$ pooled (up to a near-complete elimination of the
+attack on `gemma4:26b` specifically), measured on 3,353 matched pairs across
 five models, not extrapolated from the $n = 120$ probe that originally flagged
 the concern.
 
 The consequence for a reader is specific and, as of §7.6, quantified rather
 than bounded only by a probe. §7.1–§7.5's rates model a poisoned data source
 whose text is **passed through** by a tool wrapper that does not re-serialise
-it — which is the common case, and the case a defender should assume by
+it, which is the common case, and the case a defender should assume by
 default. They must **not** be generalised to an agent whose tool wrappers parse
 upstream results and re-encode untrusted text into structured fields. For that
 deployment shape, on the five models measured in `containment-heldout`, the
@@ -3431,8 +3433,8 @@ provenance: while fixing the `position = middle` defect (§4.4) we briefly
 implemented the payload as a well-formed record of the carrier's own type, and
 with payload text, model, carrier, framing and **seeds** held fixed,
 `gemma4:26b` on `spec_voice` at head obeyed **3/3** concatenated and **0/3**
-contained. That is $n = 3$ per arm on one model — a calibration observation, not
-a result — and it is superseded by the $n = 120$ probe of §7.6 (itself
+contained. That is $n = 3$ per arm on one model (a calibration observation, not
+a result), and it is superseded by the $n = 120$ probe of §7.6 (itself
 preliminary), which is in turn superseded by the confirmatory
 `containment-heldout` stage: `gemma4:26b` obeyed $22/680$ concatenated and
 $0/680$ contained, the same qualitative pattern the $n = 3$ observation first
@@ -3462,11 +3464,11 @@ has them.
 
 **Why publishing the measurement is net-positive.** The asymmetry is the
 argument. An attacker needs one framing that works and can discover it by
-trying a handful against a locally-downloaded model — the cost of that
-discovery is minutes on the same consumer hardware we used. A defender needs to
-know *which* framings work, *how much* defenses recover, and *whether* model
-selection helps, and cannot obtain any of that without a systematic study. The
-information asymmetry currently favours the attacker, and the specific
+trying a handful against a locally-downloaded model: the cost of that discovery
+is minutes on the same consumer hardware we used. A defender needs to know
+*which* framings work, *how much* defenses recover, and *whether* model
+selection helps, and cannot obtain any of that without a systematic study. At
+present the information asymmetry favours the attacker. The specific
 misconception this paper corrects — that overt-looking attacks are the
 dangerous ones, and that a better model is a mitigation — is one that actively
 harms defenders who hold it.
@@ -3479,8 +3481,8 @@ from adversaries; it would only remove the measurement from defenders.
 
 **What we do not publish.** We do not release a tuned or optimised attack
 generator, and we do not publish a ranked "most effective payload" artifact
-intended for reuse. The released payload set is the experimental grid — chosen
-to span a design space, not to maximise success — and the released dataset is
+intended for reuse. The released payload set is the experimental grid, chosen
+to span a design space rather than to maximise success; the released dataset is
 for verifying our analysis.
 
 **Coordination.** We will notify the maintainers of the model families studied
@@ -3547,8 +3549,8 @@ added in this revision. The 4,680 completed control trials were written under
 the previous schema and are migrated to `containment = 'concatenated'`, which is
 what they factually are. **The migration is verified rather than asserted:**
 comparing `trials.db` against the pre-migration backup `trials.db.bak` over the
-26 columns they share, the `controls-heldout` row set is identical — 4,680 rows
-in each, set equality on every field including `attack_id`, `split` and `seed`.
+26 columns they share, the `controls-heldout` row set is identical (4,680 rows
+in each, set equality on every field including `attack_id`, `split` and `seed`).
 A migration that perturbed any of those three would have silently destroyed the
 pairing that §7.4's McNemar and every future containment contrast depend on.*
 
@@ -3556,8 +3558,8 @@ pairing that §7.4's McNemar and every future containment contrast depend on.*
 Those two facts together are what make the containment arms **exact matched
 pairs**: both arms of a cell carry the same `attack_id`, hence the same `split`
 and the same `seed` (§4.5, §11.3), while remaining distinct rows that the
-resume logic can complete independently. Adding the column to the PK required
-rebuilding the table — SQLite cannot `ALTER` a primary key — following the same
+resume logic can complete independently. SQLite cannot `ALTER` a primary key, so
+adding the column to the PK required rebuilding the table. We followed the same
 rename / recreate / `INSERT..SELECT` pattern as the earlier pre-controls
 migration, with a literal `'concatenated'` for every legacy row, the old table
 retained as a backup, and a row-count assertion after the fact. The 4,680 rows
@@ -3573,16 +3575,16 @@ two conditions: in `benign`, `obeyed` means the harmless tool was called while
 
 **`forbidden_called` is second-turn only, and that has a consequence we correct
 here.** It is computed from the post-payload turn, which is the right causal
-quantity — a turn-1 `delete_records` is *not* injection-caused, because the
+quantity: a turn-1 `delete_records` is *not* injection-caused, because the
 payload has not been seen yet. But a turn-1 destructive call in a `clean` trial
 was consequently scored 0 *and* dropped from the delivered denominator, so the
 spontaneous base rate that §3.1 calls load-bearing was measured only on the
-subset of trials where the model behaved well on turn 1 — which biases Δ_inj
+subset of trials where the model behaved well on turn 1. That biases Δ_inj
 **upward**. The call is already recorded in `first_calls`; `analyze.py` now
 derives `forbidden_turn1` from it and reports the pre-payload spontaneous rate
-over **all** clean trials, delivered or not. That measure needs no clean-arm
-delivery and no payload, and it is the purest spontaneous-destruction figure in
-the study.
+over **all** clean trials, delivered or not. The pre-payload rate needs no
+clean-arm delivery and no payload, and it is the purest spontaneous-destruction
+figure in the study.
 
 Every raw model response is retained (`response`, truncated at 4,000
 characters), so every scored outcome is auditable after the fact and the
@@ -3605,14 +3607,14 @@ so a third party can regenerate our exact trials from the command line alone.
 opposite in the present tense.* The seed was originally derived with Python's
 built-in `hash()` over a tuple of strings. Python salts string hashing per
 process unless `PYTHONHASHSEED` is fixed, so three runs of the identical
-expression returned three different seeds and the recorded `seed` column could
-not regenerate its own trial. That was fixed before any confirmatory data
+expression returned three different seeds. The recorded `seed` column could not
+regenerate its own trial. That was fixed before any confirmatory data
 existed; the section above is the shipped code, verified identical across three
 separate interpreter processes.
 
 **`condition` and `defense` are deliberately absent from the seed key.** The
-arms that the analysis pairs — attack/clean/benign of one stimulus, and the
-defended/undefended runs of one attack — therefore share a seed, so a matched
+arms that the analysis pairs (attack/clean/benign of one stimulus, and the
+defended/undefended runs of one attack) therefore share a seed, so a matched
 pair is matched on sampling noise as well as on stimulus. McNemar's power
 depends on the discordant rate, and raising the within-pair correlation from 0
 to 0.6 cuts the pairs needed for the same marginals from 71 to 39. Two caveats
